@@ -180,15 +180,15 @@ function AppPrincipal({ usuario, onLogout }){
   const carregarLeads = useCallback(async (pag=0, filtro="todos", termo="") => {
     setCarregando(true);
     let query = sb.from("leads").select("*", {count:"exact"});
-    // Consultor vê só seus leads
-    if(isConsultor && !isAdmin){
-      query = query.eq("owner", usuario.name);
-    }
     // Financeiro vê só propostas
     if(isFinanceiro && !isAdmin){
       query = query.eq("status", "proposal");
-    } else if(filtro !== "todos"){
-      query = query.eq("status", filtro);
+    } else {
+      // Consultor vê seus leads OU leads sem dono
+      if(isConsultor && !isAdmin){
+        query = query.or(`owner.eq.${usuario.name},owner.is.null`);
+      }
+      if(filtro !== "todos") query = query.eq("status", filtro);
     }
     if(termo.trim()) query = query.or(`name.ilike.%${termo}%,phone1.ilike.%${termo}%,company.ilike.%${termo}%,city.ilike.%${termo}%`);
     query = query.order("created_at",{ascending:false}).range(pag*POR_PAGINA,(pag+1)*POR_PAGINA-1);
@@ -201,7 +201,7 @@ function AppPrincipal({ usuario, onLogout }){
 
   const carregarStats = useCallback(async () => {
     let query = sb.from("leads").select("status");
-    if(isConsultor && !isAdmin) query = query.eq("owner", usuario.name);
+    if(isConsultor && !isAdmin) query = query.or(`owner.eq.${usuario.name},owner.is.null`);
     const {data} = await query;
     if(!data)return;
     const s={};
@@ -389,9 +389,8 @@ function AppPrincipal({ usuario, onLogout }){
 
   /* ABAS disponíveis por perfil */
   const abas = [
-    ...(isFinanceiro && !isAdmin ? [] : [["dashboard","📊 Painel"],["list","👥 Leads"],["relatorio","📋 Relatório"],["voice","🎙️ Voz"]]),
+    ...(!isFinanceiro ? [["dashboard","📊 Painel"],["list","👥 Leads"],["relatorio","📋 Relatório"],["voice","🎙️ Voz"]] : []),
     ...(isFinanceiro ? [["financeiro","💰 Propostas"]] : []),
-    ...(isAdmin ? [["admin","👑 Admin"]] : []),
   ];
 
   if(carregando && leads.length===0) return(
@@ -430,7 +429,7 @@ function AppPrincipal({ usuario, onLogout }){
           <div style={{fontWeight:800,fontSize:20,letterSpacing:"-0.04em",color:"#fff",lineHeight:1}}>INN</div>
           <div style={{fontSize:10,color:"#3d5270",fontWeight:600,marginTop:1,display:"flex",alignItems:"center"}}>
             <span className="sync-dot" style={{background:sincStatus==="ok"?"#10b981":sincStatus==="sincronizando"?"#f97316":"#ef4444"}}/>
-            {usuario.name.split(" ")[0]} · {isAdmin?"Admin":isFinanceiro?"Financeiro":"Consultor"}
+            {usuario.name.split(" ")[0]}
           </div>
         </div>
         <div style={{display:"flex",gap:6}}>
