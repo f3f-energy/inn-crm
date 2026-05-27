@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>INN · CRM Solar</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='22' fill='%23f97316'/><line x1='50' y1='4' x2='50' y2='20' stroke='%23f97316' stroke-width='9' stroke-linecap='round'/><line x1='50' y1='80' x2='50' y2='96' stroke='%23f97316' stroke-width='9' stroke-linecap='round'/><line x1='4' y1='50' x2='20' y2='50' stroke='%23f97316' stroke-width='9' stroke-linecap='round'/><line x1='80' y1='50' x2='96' y2='50' stroke='%23f97316' stroke-width='9' stroke-linecap='round'/></svg>"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:#080d1a;font-family:'Segoe UI',sans-serif;color:#e8eaf6;}
+    ::-webkit-scrollbar{width:4px;}
+    ::-webkit-scrollbar-track{background:#080d1a;}
+    ::-webkit-scrollbar-thumb{background:#f97316;border-radius:4px;}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+const SUPA_URL = "https://nmzifhqivuhdfwlelmxp.supabase.co";
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5temlmaHFpdnVoZGZ3bGVsbXhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxMTgzNzgsImV4cCI6MjA4OTY5NDM3OH0.AFi43M_euM7iztzOyCamh1HGen3SiBUXQtfknBoWTcc";
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+const STATUS_MAP = {
+  "prospect":          { label:"Lead",             cor:"#f59e0b" },
+  "lead":              { label:"Contato feito",     cor:"#3b82f6" },
+  "proposal":          { label:"Proposta enviada",  cor:"#8b5cf6" },
+  "contract":          { label:"Visita agendada",   cor:"#06b6d4" },
+  "power-of-attorney": { label:"Procuração",        cor:"#ec4899" },
+  "client":            { label:"Fechado",           cor:"#10b981" },
+};
+const STATUS_KEYS = Object.keys(STATUS_MAP);
+const hoje = new Date().toISOString().slice(0,10);
+const REL_VAZIO = { total_hoje:0, telefone:0, escritorio:0, visitas:0, lead_quente:"", objecao:"", fechamentos_esperados:[{nome:"",valor:""}], nao_fecharam:[{nome:"",motivo:""}], amanha:"" };
+const FORM_VAZIO = { name:"", company:"", phone1:"", phone2:"", email:"", status:"prospect", city:"", state:"", value:"", kwp:"", history:"", probability:"", owner:"", visit_or_call:"0", budget:false, proposal:false, delivered:false, closed:false, post_sales:false, concessionaria:"" };
+
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap');
+  .btn{cursor:pointer;border:none;font-family:inherit;transition:all .18s;}
+  .btn:active{transform:scale(.96);}
+  .card{background:linear-gradient(135deg,#0f1a2e,#162033);border:1px solid #1a2840;border-radius:16px;}
+  .nav-btn{background:none;border:none;cursor:pointer;padding:9px 16px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;color:#4b6080;transition:all .18s;white-space:nowrap;}
+  .nav-btn.ativo{background:linear-gradient(135deg,#f97316,#fb923c);color:#fff;box-shadow:0 4px 16px rgba(249,115,22,.3);}
+  .nav-btn:hover:not(.ativo){color:#f97316;background:rgba(249,115,22,.08);}
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+  .campo{background:#060c1a;border:1.5px solid #1a2840;border-radius:10px;padding:10px 14px;color:#e8eaf6;font-size:14px;width:100%;transition:border .18s;outline:none;font-family:inherit;}
+  .campo:focus{border-color:#f97316;}
+  .pulse{animation:pulse 1.4s infinite;}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(249,115,22,.5);}50%{box-shadow:0 0 0 14px rgba(249,115,22,0);}}
+  .fade{animation:fade .3s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;}
+  .modal{background:#0f1a2e;border:1px solid #1a2840;border-radius:20px;padding:24px;width:100%;max-width:520px;max-height:92vh;overflow-y:auto;}
+  .linha{display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:12px;cursor:pointer;transition:background .15s;border:1px solid transparent;margin-bottom:8px;}
+  .linha:hover{background:rgba(249,115,22,.07);border-color:rgba(249,115,22,.2);}
+  .avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0;}
+  .stat{padding:20px 22px;border-radius:16px;position:relative;overflow:hidden;cursor:pointer;}
+  .toast{position:fixed;bottom:24px;right:24px;z-index:999;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;animation:fade .3s;box-shadow:0 8px 32px rgba(0,0,0,.4);}
+  .lbl{font-size:11px;color:#4b6080;font-weight:700;margin-bottom:5px;letter-spacing:.05em;text-transform:uppercase;}
+  .secao{font-size:11px;color:#4b6080;font-weight:700;margin-bottom:10px;margin-top:22px;letter-spacing:.06em;text-transform:uppercase;}
+  .rel-bloco{background:#060c1a;border:1px solid #1a2840;border-radius:12px;padding:16px;margin-bottom:10px;}
+  .mini-btn{cursor:pointer;border:none;font-family:inherit;background:rgba(249,115,22,.12);color:#f97316;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;}
+  .del-btn{cursor:pointer;border:none;font-family:inherit;background:rgba(239,68,68,.1);color:#ef4444;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;}
+  .check-row{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;cursor:pointer;}
+  .check-row input{width:16px;height:16px;accent-color:#f97316;cursor:pointer;}
+  .spin{display:inline-block;animation:spin 1s linear infinite;}
+  @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+  .sync-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;flex-shrink:0;}
+  .login-input{background:#060c1a;border:1.5px solid #1a2840;border-radius:12px;padding:14px 16px;color:#e8eaf6;font-size:15px;width:100%;outline:none;font-family:inherit;transition:border .18s;}
+  .login-input:focus{border-color:#f97316;}
+`;
+
+function fmtValor(v){ if(!v&&v!==0)return""; const n=parseFloat(String(v).replace(/[^\d.]/g,"")); if(isNaN(n))return String(v); return"R$ "+n.toLocaleString("pt-BR",{minimumFractionDigits:2}); }
+function limpaNum(p){ const n=(p||"").replace(/\D/g,""); return n.startsWith("55")?n:`55${n}`; }
+function statusInfo(s){ return STATUS_MAP[s]||{label:s,cor:"#64748b"}; }
+
+/* ════════════════════════════════
+   TELA DE LOGIN
+════════════════════════════════ */
+function TelaLogin({ onLogin }){
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState("");
+  const [mostrarSenha, setMostrarSenha] = useState(false);
+
+  async function entrar(){
+    if(!email||!senha){ setErro("Preencha email e senha."); return; }
+    setCarregando(true); setErro("");
+    const { data, error } = await sb.from("users").select("*").eq("email", email.toLowerCase().trim()).eq("password", senha).single();
+    if(error||!data){ setErro("Email ou senha incorretos."); setCarregando(false); return; }
+    localStorage.setItem("inn_user", JSON.stringify(data));
+    onLogin(data);
+    setCarregando(false);
+  }
+
+  return(
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24,background:"#080d1a"}}>
+      <style>{CSS}</style>
+      <div style={{width:"100%",maxWidth:380}}>
+        {/* Logo */}
+        <div style={{textAlign:"center",marginBottom:40}}>
+          <div style={{width:72,height:72,borderRadius:20,background:"linear-gradient(135deg,#f97316,#fb923c)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",boxShadow:"0 8px 32px rgba(249,115,22,.4)"}}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5">
+              <circle cx="12" cy="12" r="4"/>
+              <line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/>
+              <line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/>
+              <line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/>
+            </svg>
+          </div>
+          <div style={{fontWeight:800,fontSize:36,letterSpacing:"-0.04em",color:"#fff"}}>INN</div>
+          <div style={{fontSize:13,color:"#3d5270",fontWeight:500,marginTop:4}}>Innovatis Energia Solar · CRM</div>
+        </div>
+
+        {/* Form */}
+        <div className="card" style={{padding:28}}>
+          <div style={{marginBottom:16}}>
+            <div className="lbl">Email</div>
+            <input className="login-input" type="email" placeholder="seu@email.com" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&entrar()}/>
+          </div>
+          <div style={{marginBottom:20}}>
+            <div className="lbl">Senha</div>
+            <div style={{position:"relative"}}>
+              <input className="login-input" type={mostrarSenha?"text":"password"} placeholder="••••••••" value={senha} onChange={e=>setSenha(e.target.value)} onKeyDown={e=>e.key==="Enter"&&entrar()}/>
+              <button className="btn" onClick={()=>setMostrarSenha(!mostrarSenha)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",color:"#3d5270",fontSize:18,padding:4}}>
+                {mostrarSenha?"🙈":"👁️"}
+              </button>
+            </div>
+          </div>
+          {erro&&<div style={{background:"rgba(239,68,68,.1)",color:"#fca5a5",borderRadius:10,padding:"10px 14px",fontSize:13,marginBottom:16,textAlign:"center"}}>{erro}</div>}
+          <button className="btn" onClick={entrar} disabled={carregando} style={{width:"100%",background:"linear-gradient(135deg,#f97316,#fb923c)",color:"#fff",borderRadius:12,padding:14,fontWeight:700,fontSize:16,boxShadow:"0 4px 20px rgba(249,115,22,.4)",opacity:carregando?.7:1}}>
+            {carregando?"Entrando... ⏳":"Entrar ☀️"}
+          </button>
+        </div>
+
+        <div style={{textAlign:"center",marginTop:24,fontSize:12,color:"#1e2d45"}}>
+          Innovatis Energia Solar © {new Date().getFullYear()}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════
+   APP PRINCIPAL
+════════════════════════════════ */
+function AppPrincipal({ usuario, onLogout }){
+  const isAdmin = usuario.roles?.includes("admin");
+  const isFinanceiro = usuario.roles?.includes("financeiro");
+  const isConsultor = usuario.roles?.includes("consultant");
+
+  const [leads, setLeads] = useState([]);
+  const [relatorio, setRelatorio] = useState(REL_VAZIO);
+  const [aba, setAba] = useState(isFinanceiro ? "financeiro" : "dashboard");
+  const [modal, setModal] = useState(null);
+  const [sel, setSel] = useState(null);
+  const [form, setForm] = useState(FORM_VAZIO);
+  const [busca, setBusca] = useState("");
+  const [filtroStatus, setFiltroStatus] = useState("todos");
+  const [ouvindo, setOuvindo] = useState(false);
+  const [voiceTexto, setVoiceTexto] = useState("");
+  const [voiceParsed, setVoiceParsed] = useState(null);
+  const [voiceLoad, setVoiceLoad] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [relCopiado, setRelCopiado] = useState(false);
+  const [carregando, setCarregando] = useState(true);
+  const [totalBanco, setTotalBanco] = useState(0);
+  const [pagina, setPagina] = useState(0);
+  const [sincStatus, setSincStatus] = useState("ok");
+  const [stats, setStats] = useState({});
+  const recogRef = useRef(null);
+  const POR_PAGINA = 50;
+
+  const carregarLeads = useCallback(async (pag=0, filtro="todos", termo="") => {
+    setCarregando(true);
+    let query = sb.from("leads").select("*", {count:"exact"});
+    // Consultor vê só seus leads
+    if(isConsultor && !isAdmin){
+      query = query.eq("owner", usuario.name);
+    }
+    // Financeiro vê só propostas
+    if(isFinanceiro && !isAdmin){
+      query = query.eq("status", "proposal");
+    } else if(filtro !== "todos"){
+      query = query.eq("status", filtro);
+    }
+    if(termo.trim()) query = query.or(`name.ilike.%${termo}%,phone1.ilike.%${termo}%,company.ilike.%${termo}%,city.ilike.%${termo}%`);
+    query = query.order("created_at",{ascending:false}).range(pag*POR_PAGINA,(pag+1)*POR_PAGINA-1);
+    const {data,error,count} = await query;
+    if(error){ aviso("Erro ao carregar: "+error.message,"erro"); setCarregando(false); return; }
+    setLeads(data||[]);
+    setTotalBanco(count||0);
+    setCarregando(false);
+  },[usuario]);
+
+  const carregarStats = useCallback(async () => {
+    let query = sb.from("leads").select("status");
+    if(isConsultor && !isAdmin) query = query.eq("owner", usuario.name);
+    const {data} = await query;
+    if(!data)return;
+    const s={};
+    STATUS_KEYS.forEach(k=>s[k]=0);
+    data.forEach(l=>{ if(s[l.status]!==undefined) s[l.status]++; });
+    setStats(s);
+  },[usuario]);
+
+  useEffect(()=>{
+    carregarLeads(0,"todos","");
+    carregarStats();
+    try{ const r=localStorage.getItem("inn_rel_"+hoje); if(r) setRelatorio(JSON.parse(r)); }catch{}
+  },[]);
+
+  useEffect(()=>{if(toast){const t=setTimeout(()=>setToast(null),3500);return()=>clearTimeout(t);}},[toast]);
+  const aviso=(msg,tipo="ok")=>setToast({msg,tipo});
+
+  const buscaTimer=useRef(null);
+  function handleBusca(v){ setBusca(v); clearTimeout(buscaTimer.current); buscaTimer.current=setTimeout(()=>{ setPagina(0); carregarLeads(0,filtroStatus,v); },500); }
+  function handleFiltro(v){ setFiltroStatus(v); setPagina(0); carregarLeads(0,v,busca); }
+  function irPagina(p){ setPagina(p); carregarLeads(p,filtroStatus,busca); }
+
+  function abrirAdicionar(){ setForm({...FORM_VAZIO, owner: usuario.name}); setModal("add"); }
+  function abrirEditar(l){ setSel(l); setForm({...l}); setModal("edit"); }
+  function abrirVer(l){ setSel(l); setModal("view"); }
+  function fecharModal(){ setModal(null); setSel(null); }
+
+  async function salvarLead(){
+    if(!form.name?.trim()){ aviso("Nome obrigatório!","erro"); return; }
+    setSincStatus("sincronizando");
+    const payload={
+      name:form.name, company:form.company||null, phone1:form.phone1||null, phone2:form.phone2||null,
+      email:form.email||null, status:form.status||"prospect", city:form.city||null, state:form.state||null,
+      value:form.value?parseFloat(String(form.value).replace(/[^\d.]/g,"")):null,
+      kwp:form.kwp?parseFloat(form.kwp):null, history:form.history||null,
+      probability:form.probability||null, owner:form.owner||usuario.name,
+      visit_or_call:form.visit_or_call||"0", budget:!!form.budget, proposal:!!form.proposal,
+      delivered:!!form.delivered, closed:!!form.closed, post_sales:!!form.post_sales,
+      concessionaria:form.concessionaria||null,
+    };
+    let error;
+    if(modal==="add"){ ({error}=await sb.from("leads").insert(payload)); if(!error) aviso("Lead adicionado! ✅"); }
+    else { ({error}=await sb.from("leads").update(payload).eq("id",sel.id)); if(!error) aviso("Lead atualizado! ✅"); }
+    if(error) aviso("Erro: "+error.message,"erro");
+    await carregarLeads(pagina,filtroStatus,busca);
+    await carregarStats();
+    setSincStatus("ok");
+    fecharModal();
+  }
+
+  async function excluirLead(id){
+    if(!confirm("Excluir este lead?"))return;
+    setSincStatus("sincronizando");
+    const {error}=await sb.from("leads").delete().eq("id",id);
+    if(error) aviso("Erro: "+error.message,"erro"); else aviso("Lead removido.","erro");
+    await carregarLeads(pagina,filtroStatus,busca);
+    await carregarStats();
+    setSincStatus("ok");
+    fecharModal();
+  }
+
+  async function registrarContato(id){
+    const l=leads.find(x=>x.id===id); if(!l)return;
+    const novas=parseInt(l.visit_or_call||"0")+1;
+    setSincStatus("sincronizando");
+    await sb.from("leads").update({visit_or_call:String(novas)}).eq("id",id);
+    await carregarLeads(pagina,filtroStatus,busca);
+    setSincStatus("ok");
+    aviso("Contato registrado! 📞");
+    if(sel?.id===id) setSel(prev=>({...prev,visit_or_call:String(novas)}));
+  }
+
+  async function aprovarProposta(id){
+    setSincStatus("sincronizando");
+    await sb.from("leads").update({status:"contract", proposal:true}).eq("id",id);
+    aviso("Proposta aprovada! ✅");
+    await carregarLeads(pagina,filtroStatus,busca);
+    setSincStatus("ok");
+    fecharModal();
+  }
+
+  function abrirWhatsApp(l){
+    const num=l.phone1||l.phone2; if(!num){ aviso("Sem telefone.","erro"); return; }
+    const msg=encodeURIComponent(`Olá ${(l.name||"").split(" ")[0]}, tudo bem? Sou da Innovatis Energia Solar e gostaria de conversar sobre como podemos reduzir sua conta de luz. 😊☀️`);
+    window.open(`https://wa.me/${limpaNum(num)}?text=${msg}`,"_blank");
+    registrarContato(l.id);
+  }
+
+  function exportarCSV(){
+    const cab=["Nome","Empresa","Telefone","Status","Cidade","Valor","kWp","Responsável"];
+    const lin=leads.map(l=>[l.name,l.company,l.phone1,l.status,l.city,l.value,l.kwp,l.owner].map(v=>`"${v||""}"`).join(","));
+    const csv=[cab.join(","),...lin].join("\n");
+    const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download="inn_leads.csv";a.click();
+    aviso("Exportado!");
+  }
+
+  /* VOZ */
+  function iniciarVoz(){
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR){ aviso("Voz não suportada neste navegador.","erro"); return; }
+    const r=new SR(); r.lang="pt-BR"; r.continuous=false; r.interimResults=false;
+    r.onresult=e=>{ const t=e.results[0][0].transcript; setVoiceTexto(t); interpretarVoz(t); };
+    r.onerror=()=>{ setOuvindo(false); aviso("Erro ao capturar voz.","erro"); };
+    r.onend=()=>setOuvindo(false);
+    recogRef.current=r; r.start(); setOuvindo(true); setVoiceTexto(""); setVoiceParsed(null);
+  }
+  function pararVoz(){ if(recogRef.current) recogRef.current.stop(); setOuvindo(false); }
+
+  async function interpretarVoz(texto){
+    setVoiceLoad(true);
+    try{
+      const res=await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          model:"claude-sonnet-4-20250514",max_tokens:600,
+          system:`Você extrai dados de leads de energia solar de texto falado por um vendedor. Retorne SOMENTE JSON com: name, company, phone1, city, state (UF 2 letras), status (prospect/lead/proposal/contract/client), value (número sem R$), kwp (número), history (observações). Sem texto extra, sem markdown.`,
+          messages:[{role:"user",content:texto}]
+        })
+      });
+      const d=await res.json();
+      const raw=d.content?.[0]?.text||"{}";
+      const parsed=JSON.parse(raw.replace(/```json|```/g,"").trim());
+      setVoiceParsed({...FORM_VAZIO,...parsed,owner:usuario.name});
+    }catch{ aviso("Não consegui interpretar. Tente novamente.","erro"); }
+    setVoiceLoad(false);
+  }
+
+  async function confirmarVoz(){
+    if(!voiceParsed?.name){ aviso("Nome não identificado.","erro"); return; }
+    setSincStatus("sincronizando");
+    const payload={
+      name:voiceParsed.name, company:voiceParsed.company||null, phone1:voiceParsed.phone1||null,
+      city:voiceParsed.city||null, state:voiceParsed.state||null,
+      status:voiceParsed.status||"prospect",
+      value:voiceParsed.value?parseFloat(voiceParsed.value):null,
+      kwp:voiceParsed.kwp?parseFloat(voiceParsed.kwp):null,
+      history:voiceParsed.history||null, owner:usuario.name,
+    };
+    const {error}=await sb.from("leads").insert(payload);
+    if(error) aviso("Erro: "+error.message,"erro"); else aviso("Lead salvo! ✅");
+    await carregarLeads(0,filtroStatus,busca);
+    await carregarStats();
+    setSincStatus("ok");
+    setVoiceParsed(null); setVoiceTexto("");
+  }
+
+  /* RELATÓRIO */
+  function setRel(c,v){ setRelatorio(prev=>{ const n={...prev,[c]:v}; try{localStorage.setItem("inn_rel_"+hoje,JSON.stringify(n));}catch{} return n; }); }
+  function addFechamento(){ setRelatorio(p=>({...p,fechamentos_esperados:[...p.fechamentos_esperados,{nome:"",valor:""}]})); }
+  function setFechamento(i,c,v){ setRelatorio(p=>{ const a=[...p.fechamentos_esperados]; a[i]={...a[i],[c]:v}; return{...p,fechamentos_esperados:a}; }); }
+  function remFechamento(i){ setRelatorio(p=>({...p,fechamentos_esperados:p.fechamentos_esperados.filter((_,idx)=>idx!==i)})); }
+  function addNaoFechou(){ setRelatorio(p=>({...p,nao_fecharam:[...p.nao_fecharam,{nome:"",motivo:""}]})); }
+  function setNaoFechou(i,c,v){ setRelatorio(p=>{ const a=[...p.nao_fecharam]; a[i]={...a[i],[c]:v}; return{...p,nao_fecharam:a}; }); }
+  function remNaoFechou(i){ setRelatorio(p=>({...p,nao_fecharam:p.nao_fecharam.filter((_,idx)=>idx!==i)})); }
+
+  function gerarTextoRelatorio(){
+    const r=relatorio;
+    const d=new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"});
+    let txt=`☀️ *RELATÓRIO DIÁRIO INN*\n👤 ${usuario.name}\n📅 ${d}\n${"─".repeat(30)}\n\n`;
+    txt+=`*1️⃣ Clientes contatados hoje: ${r.total_hoje}*\n`;
+    if(r.telefone>0)txt+=`   📞 Telefone: ${r.telefone}\n`;
+    if(r.escritorio>0)txt+=`   🏢 Escritório: ${r.escritorio}\n`;
+    if(r.visitas>0)txt+=`   🚗 Visitas: ${r.visitas}\n`;
+    txt+=`\n*2️⃣ Lead quente trabalhado hoje:*\n   🔥 ${r.lead_quente||"—"}\n`;
+    txt+=`\n*3️⃣ Principal objeção:*\n   ⚠️ ${r.objecao||"—"}\n`;
+    if(r.fechamentos_esperados.filter(f=>f.nome).length>0){
+      txt+=`\n*4️⃣ Vendas que fecham essa semana:*\n`;
+      r.fechamentos_esperados.filter(f=>f.nome).forEach(f=>{ txt+=`   💰 ${f.nome}`; if(f.valor)txt+=` — ${fmtValor(f.valor)}`; txt+="\n"; });
+    }
+    if(r.nao_fecharam.filter(n=>n.nome).length>0){
+      txt+=`\n*5️⃣ Clientes que ainda não fecharam:*\n`;
+      r.nao_fecharam.filter(n=>n.nome).forEach(n=>{ txt+=`   ❌ ${n.nome}`; if(n.motivo)txt+=`\n      📌 Motivo: ${n.motivo}`; txt+="\n"; });
+    }
+    if(r.amanha)txt+=`\n*6️⃣ Plano de amanhã:*\n   📋 ${r.amanha}\n`;
+    txt+=`\n${"─".repeat(30)}\n_Enviado via INN CRM Solar_`;
+    return txt;
+  }
+
+  function copiarRelatorio(){ navigator.clipboard.writeText(gerarTextoRelatorio()).then(()=>{ setRelCopiado(true); aviso("Copiado! Cole no WhatsApp."); setTimeout(()=>setRelCopiado(false),3000); }).catch(()=>aviso("Erro ao copiar.","erro")); }
+  function enviarRelWhatsApp(){ window.open(`https://wa.me/?text=${encodeURIComponent(gerarTextoRelatorio())}`,"_blank"); }
+
+  const totalPaginas=Math.ceil(totalBanco/POR_PAGINA);
+
+  /* ABAS disponíveis por perfil */
+  const abas = [
+    ...(isFinanceiro && !isAdmin ? [] : [["dashboard","📊 Painel"],["list","👥 Leads"],["relatorio","📋 Relatório"],["voice","🎙️ Voz"]]),
+    ...(isFinanceiro ? [["financeiro","💰 Propostas"]] : []),
+    ...(isAdmin ? [["admin","👑 Admin"]] : []),
+  ];
+
+  if(carregando && leads.length===0) return(
+    <div style={{fontFamily:"'Sora','Segoe UI',sans-serif",background:"#080d1a",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:"#e8eaf6"}}>
+      <style>{CSS}</style>
+      <div style={{width:64,height:64,borderRadius:18,background:"linear-gradient(135deg,#f97316,#fb923c)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20,boxShadow:"0 8px 32px rgba(249,115,22,.4)"}}>
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5">
+          <circle cx="12" cy="12" r="4"/>
+          <line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/>
+          <line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/>
+          <line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/>
+        </svg>
+      </div>
+      <div style={{fontWeight:800,fontSize:32,letterSpacing:"-0.04em",marginBottom:8}}>INN</div>
+      <div style={{color:"#3d5270",fontSize:14}}>Carregando... <span className="spin">⏳</span></div>
+    </div>
+  );
+
+  return(
+    <div style={{fontFamily:"'Sora','Segoe UI',sans-serif",background:"#080d1a",minHeight:"100vh",color:"#e8eaf6"}}>
+      <style>{CSS}</style>
+
+      {/* HEADER */}
+      <div style={{background:"linear-gradient(90deg,#0a1020,#0f1a2e)",borderBottom:"1px solid #1a2840",padding:"12px 16px",display:"flex",alignItems:"center",gap:12}}>
+        <div style={{width:38,height:38,borderRadius:12,background:"linear-gradient(135deg,#f97316,#fb923c)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 16px rgba(249,115,22,.4)",flexShrink:0}}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5">
+            <circle cx="12" cy="12" r="4"/>
+            <line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/>
+            <line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/>
+            <line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/>
+          </svg>
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontWeight:800,fontSize:20,letterSpacing:"-0.04em",color:"#fff",lineHeight:1}}>INN</div>
+          <div style={{fontSize:10,color:"#3d5270",fontWeight:600,marginTop:1,display:"flex",alignItems:"center"}}>
+            <span className="sync-dot" style={{background:sincStatus==="ok"?"#10b981":sincStatus==="sincronizando"?"#f97316":"#ef4444"}}/>
+            {usuario.name.split(" ")[0]} · {isAdmin?"Admin":isFinanceiro?"Financeiro":"Consultor"}
+          </div>
+        </div>
+        <div style={{display:"flex",gap:6}}>
+          {!isFinanceiro&&<button className="btn" onClick={exportarCSV} style={{background:"rgba(249,115,22,.1)",color:"#f97316",border:"1px solid rgba(249,115,22,.25)",borderRadius:10,padding:"7px 12px",fontSize:12,fontWeight:700}}>⬇ Excel</button>}
+          {!isFinanceiro&&<button className="btn" onClick={abrirAdicionar} style={{background:"linear-gradient(135deg,#f97316,#fb923c)",color:"#fff",borderRadius:10,padding:"7px 13px",fontSize:13,fontWeight:700}}>+ Novo</button>}
+          <button className="btn" onClick={onLogout} style={{background:"rgba(239,68,68,.1)",color:"#ef4444",borderRadius:10,padding:"7px 12px",fontSize:12,fontWeight:700}}>Sair</button>
+        </div>
+      </div>
+
+      {/* NAV */}
+      <div style={{display:"flex",gap:3,padding:"8px 12px",borderBottom:"1px solid #1a2840",overflowX:"auto"}}>
+        {abas.map(([v,l])=>(
+          <button key={v} className={`nav-btn${aba===v?" ativo":""}`} onClick={()=>setAba(v)}>{l}</button>
+        ))}
+      </div>
+
+      <div style={{padding:"18px 14px",maxWidth:860,margin:"0 auto"}}>
+
+        {/* ══ PAINEL ══ */}
+        {aba==="dashboard"&&(
+          <div className="fade">
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
+              {STATUS_KEYS.map(k=>(
+                <div key={k} className="stat card" onClick={()=>{setAba("list");handleFiltro(k);}}>
+                  <div style={{fontSize:30,fontWeight:800,color:STATUS_MAP[k].cor,lineHeight:1}}>{stats[k]||0}</div>
+                  <div style={{fontSize:11,color:"#3d5270",fontWeight:600,marginTop:4}}>{STATUS_MAP[k].label}</div>
+                  <div style={{position:"absolute",right:-8,top:-8,width:60,height:60,borderRadius:"50%",background:`${STATUS_MAP[k].cor}15`}}/>
+                </div>
+              ))}
+              <div className="stat card" style={{gridColumn:"1/-1",background:"linear-gradient(135deg,#0f2a1a,#0a1f12)"}}>
+                <div style={{fontSize:30,fontWeight:800,color:"#10b981",lineHeight:1}}>{totalBanco}</div>
+                <div style={{fontSize:11,color:"#3d5270",fontWeight:600,marginTop:4}}>Total de Leads {isAdmin?"no Banco":"seus"}</div>
+              </div>
+            </div>
+            <div className="secao">📈 Pipeline</div>
+            <div className="card" style={{padding:18}}>
+              {STATUS_KEYS.map(k=>{
+                const cnt=stats[k]||0;
+                const pct=totalBanco?Math.round((cnt/totalBanco)*100):0;
+                return(
+                  <div key={k} style={{marginBottom:12}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+                      <span style={{fontSize:13,fontWeight:600}}>{STATUS_MAP[k].label}</span>
+                      <span style={{fontSize:13,color:STATUS_MAP[k].cor,fontWeight:700}}>{cnt} <span style={{color:"#3d5270",fontWeight:400,fontSize:11}}>({pct}%)</span></span>
+                    </div>
+                    <div style={{background:"#1a2840",borderRadius:6,height:7}}>
+                      <div style={{width:`${pct}%`,height:7,borderRadius:6,background:STATUS_MAP[k].cor,transition:"width .6s"}}/>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="secao" style={{marginTop:24}}>🕐 Últimos leads</div>
+            {leads.slice(0,5).map(l=>(
+              <div key={l.id} className="linha card" onClick={()=>abrirVer(l)}>
+                <div className="avatar" style={{background:`${statusInfo(l.status).cor}22`,color:statusInfo(l.status).cor}}>{(l.name||"?")[0].toUpperCase()}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,fontSize:14,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{l.name}</div>
+                  <div style={{fontSize:12,color:"#3d5270"}}>{[l.company,l.city].filter(Boolean).join(" · ")||"—"}</div>
+                </div>
+                <span className="badge" style={{background:`${statusInfo(l.status).cor}20`,color:statusInfo(l.status).cor}}>{statusInfo(l.status).label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ══ LEADS ══ */}
+        {aba==="list"&&(
+          <div className="fade">
+            <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+              <input className="campo" placeholder="🔍 Nome, telefone, empresa, cidade..." value={busca} onChange={e=>handleBusca(e.target.value)} style={{flex:1,minWidth:180}}/>
+              <select className="campo" value={filtroStatus} onChange={e=>handleFiltro(e.target.value)} style={{width:"auto"}}>
+                <option value="todos">Todos</option>
+                {STATUS_KEYS.map(k=><option key={k} value={k}>{STATUS_MAP[k].label}</option>)}
+              </select>
+            </div>
+            <div style={{fontSize:12,color:"#3d5270",marginBottom:10,display:"flex",justifyContent:"space-between"}}>
+              <span>{carregando?"Carregando...":`${totalBanco} leads · pág ${pagina+1}/${totalPaginas||1}`}</span>
+              {carregando&&<span className="spin">⏳</span>}
+            </div>
+            {leads.map(l=>(
+              <div key={l.id} className="linha card" onClick={()=>abrirVer(l)}>
+                <div className="avatar" style={{background:`${statusInfo(l.status).cor}22`,color:statusInfo(l.status).cor}}>{(l.name||"?")[0].toUpperCase()}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,fontSize:14,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{l.name}</div>
+                  <div style={{fontSize:12,color:"#3d5270"}}>{[l.company,l.city,l.state].filter(Boolean).join(" · ")}</div>
+                  {l.value&&<div style={{fontSize:11,color:"#10b981",fontWeight:700,marginTop:2}}>{fmtValor(l.value)}{l.kwp?` · ${l.kwp} kWp`:""}</div>}
+                  {isAdmin&&l.owner&&<div style={{fontSize:11,color:"#3d5270",marginTop:1}}>👤 {l.owner}</div>}
+                </div>
+                <div style={{textAlign:"right",flexShrink:0}}>
+                  <span className="badge" style={{background:`${statusInfo(l.status).cor}20`,color:statusInfo(l.status).cor}}>{statusInfo(l.status).label}</span>
+                  <div style={{fontSize:11,color:"#3d5270",marginTop:4}}>📞 {l.visit_or_call||0}</div>
+                  <button className="btn" onClick={e=>{e.stopPropagation();abrirWhatsApp(l);}} style={{marginTop:5,background:"#25d366",color:"#fff",borderRadius:8,padding:"3px 10px",fontSize:11,fontWeight:700}}>💬 WA</button>
+                </div>
+              </div>
+            ))}
+            {totalPaginas>1&&(
+              <div style={{display:"flex",justifyContent:"center",gap:8,marginTop:16}}>
+                <button className="btn" onClick={()=>irPagina(Math.max(0,pagina-1))} disabled={pagina===0} style={{background:"#1a2840",color:pagina===0?"#3d5270":"#e8eaf6",borderRadius:8,padding:"6px 14px",fontWeight:600,opacity:pagina===0?.4:1}}>← Anterior</button>
+                <span style={{color:"#3d5270",fontSize:13,padding:"6px 4px"}}>{pagina+1}/{totalPaginas}</span>
+                <button className="btn" onClick={()=>irPagina(Math.min(totalPaginas-1,pagina+1))} disabled={pagina>=totalPaginas-1} style={{background:"#1a2840",color:pagina>=totalPaginas-1?"#3d5270":"#e8eaf6",borderRadius:8,padding:"6px 14px",fontWeight:600,opacity:pagina>=totalPaginas-1?.4:1}}>Próxima →</button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══ FINANCEIRO — PROPOSTAS ══ */}
+        {aba==="financeiro"&&(
+          <div className="fade">
+            <div style={{fontWeight:800,fontSize:18,marginBottom:4}}>💰 Propostas para Aprovação</div>
+            <div style={{fontSize:12,color:"#3d5270",marginBottom:20}}>Leads com proposta enviada aguardando aprovação.</div>
+            {leads.length===0&&<div className="card" style={{padding:20,textAlign:"center",color:"#3d5270"}}>Nenhuma proposta pendente no momento.</div>}
+            {leads.map(l=>(
+              <div key={l.id} className="linha card" onClick={()=>abrirVer(l)}>
+                <div className="avatar" style={{background:"rgba(139,92,246,.2)",color:"#8b5cf6"}}>{(l.name||"?")[0].toUpperCase()}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,fontSize:14}}>{l.name}</div>
+                  <div style={{fontSize:12,color:"#3d5270"}}>{[l.company,l.city].filter(Boolean).join(" · ")}</div>
+                  {l.value&&<div style={{fontSize:13,color:"#10b981",fontWeight:700,marginTop:2}}>{fmtValor(l.value)}{l.kwp?` · ${l.kwp} kWp`:""}</div>}
+                  <div style={{fontSize:11,color:"#3d5270",marginTop:1}}>👤 {l.owner||"—"}</div>
+                </div>
+                <button className="btn" onClick={e=>{e.stopPropagation();aprovarProposta(l.id);}} style={{background:"linear-gradient(135deg,#10b981,#059669)",color:"#fff",borderRadius:10,padding:"8px 14px",fontWeight:700,fontSize:12,flexShrink:0}}>✅ Aprovar</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ══ ADMIN ══ */}
+        {aba==="admin"&&isAdmin&&(
+          <div className="fade">
+            <div style={{fontWeight:800,fontSize:18,marginBottom:16}}>👑 Visão Admin</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
+              {STATUS_KEYS.map(k=>(
+                <div key={k} className="stat card">
+                  <div style={{fontSize:28,fontWeight:800,color:STATUS_MAP[k].cor}}>{stats[k]||0}</div>
+                  <div style={{fontSize:11,color:"#3d5270",fontWeight:600,marginTop:4}}>{STATUS_MAP[k].label}</div>
+                  <div style={{position:"absolute",right:-8,top:-8,width:60,height:60,borderRadius:"50%",background:`${STATUS_MAP[k].cor}15`}}/>
+                </div>
+              ))}
+              <div className="stat card" style={{gridColumn:"1/-1",background:"linear-gradient(135deg,#0f2a1a,#0a1f12)"}}>
+                <div style={{fontSize:28,fontWeight:800,color:"#10b981"}}>{totalBanco}</div>
+                <div style={{fontSize:11,color:"#3d5270",fontWeight:600,marginTop:4}}>Total Geral no Banco</div>
+              </div>
+            </div>
+            <div className="secao">Todos os leads recentes</div>
+            {leads.slice(0,10).map(l=>(
+              <div key={l.id} className="linha card" onClick={()=>abrirVer(l)}>
+                <div className="avatar" style={{background:`${statusInfo(l.status).cor}22`,color:statusInfo(l.status).cor}}>{(l.name||"?")[0].toUpperCase()}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,fontSize:14,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{l.name}</div>
+                  <div style={{fontSize:12,color:"#3d5270"}}>{[l.company,l.city].filter(Boolean).join(" · ")}</div>
+                  <div style={{fontSize:11,color:"#f97316",marginTop:1}}>👤 {l.owner||"Sem responsável"}</div>
+                </div>
+                <span className="badge" style={{background:`${statusInfo(l.status).cor}20`,color:statusInfo(l.status).cor}}>{statusInfo(l.status).label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ══ RELATÓRIO ══ */}
+        {aba==="relatorio"&&(
+          <div className="fade">
+            <div style={{fontWeight:800,fontSize:18,marginBottom:4}}>Relatório Diário</div>
+            <div style={{fontSize:12,color:"#3d5270",marginBottom:20}}>Preencha e envie para seu gestor.</div>
+            <div className="rel-bloco">
+              <div className="lbl">1️⃣ Clientes contatados hoje</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:8}}>
+                {[["Total","total_hoje"],["📞 Telefone","telefone"],["🏢 Escritório","escritorio"],["🚗 Visitas","visitas"]].map(([lbl,key])=>(
+                  <div key={key}><div style={{fontSize:11,color:"#3d5270",marginBottom:4}}>{lbl}</div>
+                  <input className="campo" type="number" min="0" value={relatorio[key]} onChange={e=>setRel(key,Number(e.target.value))} style={{padding:"8px 12px"}}/></div>
+                ))}
+              </div>
+            </div>
+            <div className="rel-bloco">
+              <div className="lbl">2️⃣ Lead quente trabalhado hoje</div>
+              <input className="campo" placeholder="Ex: Geladinhos Gourmet" value={relatorio.lead_quente} onChange={e=>setRel("lead_quente",e.target.value)} style={{marginTop:8}}/>
+            </div>
+            <div className="rel-bloco">
+              <div className="lbl">3️⃣ Principal objeção</div>
+              <input className="campo" placeholder="Ex: Financiamento, organização do dinheiro..." value={relatorio.objecao} onChange={e=>setRel("objecao",e.target.value)} style={{marginTop:8}}/>
+            </div>
+            <div className="rel-bloco">
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <div className="lbl" style={{margin:0}}>4️⃣ Vendas que fecham essa semana</div>
+                <button className="mini-btn" onClick={addFechamento}>+ Adicionar</button>
+              </div>
+              {relatorio.fechamentos_esperados.map((f,i)=>(
+                <div key={i} style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
+                  <input className="campo" placeholder="Nome do cliente" value={f.nome} onChange={e=>setFechamento(i,"nome",e.target.value)} style={{flex:2}}/>
+                  <input className="campo" placeholder="Valor R$" value={f.valor} onChange={e=>setFechamento(i,"valor",e.target.value)} style={{flex:1}}/>
+                  {relatorio.fechamentos_esperados.length>1&&<button className="del-btn" onClick={()=>remFechamento(i)}>✕</button>}
+                </div>
+              ))}
+            </div>
+            <div className="rel-bloco">
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <div className="lbl" style={{margin:0}}>5️⃣ Clientes que ainda não fecharam</div>
+                <button className="mini-btn" onClick={addNaoFechou}>+ Adicionar</button>
+              </div>
+              {relatorio.nao_fecharam.map((n,i)=>(
+                <div key={i} style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
+                  <input className="campo" placeholder="Nome" value={n.nome} onChange={e=>setNaoFechou(i,"nome",e.target.value)} style={{flex:1}}/>
+                  <input className="campo" placeholder="Por quê não fechou?" value={n.motivo} onChange={e=>setNaoFechou(i,"motivo",e.target.value)} style={{flex:2}}/>
+                  {relatorio.nao_fecharam.length>1&&<button className="del-btn" onClick={()=>remNaoFechou(i)}>✕</button>}
+                </div>
+              ))}
+            </div>
+            <div className="rel-bloco">
+              <div className="lbl">6️⃣ Plano de amanhã</div>
+              <textarea className="campo" rows={3} placeholder="Quem ligar, visitar ou dar continuidade..." value={relatorio.amanha} onChange={e=>setRel("amanha",e.target.value)} style={{marginTop:8,resize:"vertical"}}/>
+            </div>
+            <div className="secao">Pré-visualização</div>
+            <div style={{background:"#060c1a",border:"1px solid #1a2840",borderRadius:12,padding:16,marginBottom:16,fontFamily:"monospace",fontSize:12,color:"#94a3b8",lineHeight:1.8,whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{gerarTextoRelatorio()}</div>
+            <div style={{display:"flex",gap:10}}>
+              <button className="btn" onClick={copiarRelatorio} style={{flex:1,background:relCopiado?"linear-gradient(135deg,#10b981,#059669)":"#1a2840",color:relCopiado?"#fff":"#94a3b8",borderRadius:12,padding:14,fontWeight:700,fontSize:14,transition:"all .3s"}}>{relCopiado?"✅ Copiado!":"📋 Copiar Texto"}</button>
+              <button className="btn" onClick={enviarRelWhatsApp} style={{flex:1,background:"linear-gradient(135deg,#25d366,#128c7e)",color:"#fff",borderRadius:12,padding:14,fontWeight:700,fontSize:14}}>💬 WhatsApp</button>
+            </div>
+          </div>
+        )}
+
+        {/* ══ VOZ ══ */}
+        {aba==="voice"&&(
+          <div className="fade" style={{textAlign:"center"}}>
+            <div style={{marginBottom:8,color:"#3d5270",fontSize:14}}>Fale enquanto dirige:</div>
+            <div className="card" style={{padding:14,marginBottom:24,fontSize:13,color:"#647d9e",lineHeight:1.8,textAlign:"left"}}>
+              <em>"Lead Geladinhos Gourmet, contato João Silva, telefone 64 99999-1234, Rio Verde GO, proposta de 22 mil, sistema de 8 kWp, ligar amanhã"</em>
+            </div>
+            <button className={`btn${ouvindo?" pulse":""}`} onClick={ouvindo?pararVoz:iniciarVoz} style={{width:110,height:110,borderRadius:"50%",background:ouvindo?"rgba(249,115,22,.15)":"rgba(249,115,22,.08)",border:`3px solid ${ouvindo?"#f97316":"#1a2840"}`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill={ouvindo?"#f97316":"none"} stroke={ouvindo?"#f97316":"#3d5270"} strokeWidth="2">
+                <rect x="9" y="2" width="6" height="11" rx="3"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            </button>
+            <div style={{fontSize:13,color:ouvindo?"#f97316":"#3d5270",fontWeight:600,marginBottom:24}}>{ouvindo?"🔴 Ouvindo... toque para parar":"Toque para falar"}</div>
+            {voiceTexto&&(<div className="card" style={{padding:16,marginBottom:16,textAlign:"left"}}><div className="lbl">Você disse:</div><div style={{fontSize:14,color:"#647d9e",fontStyle:"italic",marginTop:4}}>"{voiceTexto}"</div></div>)}
+            {voiceLoad&&<div style={{color:"#f97316",fontSize:14,marginBottom:16}}>⏳ Interpretando com IA...</div>}
+            {voiceParsed&&(
+              <div className="card fade" style={{padding:20,textAlign:"left"}}>
+                <div style={{fontSize:11,color:"#10b981",fontWeight:700,marginBottom:12,textTransform:"uppercase"}}>✅ Lead identificado</div>
+                <div style={{display:"grid",gap:6,marginBottom:16}}>
+                  {[["Nome",voiceParsed.name],["Empresa",voiceParsed.company],["Telefone",voiceParsed.phone1],["Cidade",voiceParsed.city],["Estado",voiceParsed.state],["Status",statusInfo(voiceParsed.status).label],["Valor",fmtValor(voiceParsed.value)],["kWp",voiceParsed.kwp],["Observação",voiceParsed.history]].map(([k,v])=>v?(
+                    <div key={k} style={{display:"flex",gap:8}}><span style={{fontSize:12,color:"#3d5270",minWidth:90}}>{k}:</span><span style={{fontSize:13,color:"#e8eaf6",fontWeight:600}}>{v}</span></div>
+                  ):null)}
+                </div>
+                <div style={{display:"flex",gap:8}}>
+                  <button className="btn" onClick={confirmarVoz} style={{flex:1,background:"linear-gradient(135deg,#10b981,#059669)",color:"#fff",borderRadius:10,padding:"10px 0",fontWeight:700,fontSize:14}}>✅ Salvar</button>
+                  <button className="btn" onClick={()=>{setForm(voiceParsed);setModal("add");setVoiceParsed(null);}} style={{flex:1,background:"#1a2840",color:"#647d9e",borderRadius:10,padding:"10px 0",fontWeight:600,fontSize:14}}>✏️ Editar</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* MODAL VER */}
+      {modal==="view"&&sel&&(
+        <div className="overlay" onClick={fecharModal}>
+          <div className="modal fade" onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <div className="avatar" style={{width:50,height:50,fontSize:19,background:`${statusInfo(sel.status).cor}22`,color:statusInfo(sel.status).cor}}>{(sel.name||"?")[0].toUpperCase()}</div>
+                <div>
+                  <div style={{fontWeight:800,fontSize:17,lineHeight:1.2}}>{sel.name}</div>
+                  {sel.company&&<div style={{fontSize:13,color:"#647d9e",marginTop:2}}>{sel.company}</div>}
+                  <span className="badge" style={{background:`${statusInfo(sel.status).cor}20`,color:statusInfo(sel.status).cor,marginTop:4,display:"inline-block"}}>{statusInfo(sel.status).label}</span>
+                </div>
+              </div>
+              <button className="btn" onClick={fecharModal} style={{color:"#3d5270",background:"none",fontSize:22,lineHeight:1,flexShrink:0}}>✕</button>
+            </div>
+            <div style={{display:"grid",gap:10,marginBottom:14}}>
+              {[[sel.phone1,"📞","Telefone principal"],[sel.phone2,"📱","Telefone secundário"],[sel.email,"✉️","Email"],[(sel.city||sel.state)?[sel.city,sel.state].filter(Boolean).join(" - "):null,"📍","Localização"],[sel.value?fmtValor(sel.value)+(sel.kwp?` · ${sel.kwp} kWp`:""):null,"💰","Valor"],[sel.probability,"🎯","Probabilidade"],[sel.owner,"👤","Responsável"],[sel.concessionaria,"⚡","Concessionária"]].filter(([v])=>v).map(([val,ic,lbl],i)=>(
+                <div key={i} style={{display:"flex",gap:10,alignItems:"center"}}>
+                  <span style={{fontSize:16}}>{ic}</span>
+                  <div><div style={{fontSize:11,color:"#3d5270"}}>{lbl}</div><div style={{fontSize:14,fontWeight:600}}>{val}</div></div>
+                </div>
+              ))}
+            </div>
+            {sel.history&&<div style={{background:"#060c1a",borderRadius:10,padding:12,marginBottom:12,fontSize:13,color:"#647d9e",lineHeight:1.6}}>📝 {sel.history}</div>}
+            <div style={{fontSize:11,color:"#3d5270",marginBottom:12}}>📞 {sel.visit_or_call||0} contatos registrados</div>
+            {isFinanceiro&&sel.status==="proposal"&&(
+              <button className="btn" onClick={()=>aprovarProposta(sel.id)} style={{width:"100%",background:"linear-gradient(135deg,#10b981,#059669)",color:"#fff",borderRadius:10,padding:12,fontWeight:700,fontSize:15,marginBottom:8}}>✅ Aprovar Proposta</button>
+            )}
+            <div style={{display:"flex",gap:8}}>
+              <button className="btn" onClick={()=>abrirWhatsApp(sel)} style={{flex:1,background:"linear-gradient(135deg,#25d366,#128c7e)",color:"#fff",borderRadius:10,padding:11,fontWeight:700,fontSize:14}}>💬 WhatsApp</button>
+              <button className="btn" onClick={()=>registrarContato(sel.id)} style={{flex:1,background:"rgba(249,115,22,.12)",color:"#f97316",border:"1px solid rgba(249,115,22,.25)",borderRadius:10,padding:11,fontWeight:700,fontSize:13}}>📞 Contato ({sel.visit_or_call||0})</button>
+            </div>
+            {!isFinanceiro&&(
+              <div style={{display:"flex",gap:8,marginTop:8}}>
+                <button className="btn" onClick={()=>abrirEditar(sel)} style={{flex:1,background:"#1a2840",color:"#647d9e",borderRadius:10,padding:10,fontWeight:600,fontSize:13}}>✏️ Editar</button>
+                {isAdmin&&<button className="btn" onClick={()=>excluirLead(sel.id)} style={{background:"rgba(239,68,68,.1)",color:"#ef4444",borderRadius:10,padding:"10px 14px",fontWeight:700,fontSize:13}}>🗑️</button>}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ADD/EDIT */}
+      {(modal==="add"||modal==="edit")&&(
+        <div className="overlay" onClick={fecharModal}>
+          <div className="modal fade" onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <div style={{fontWeight:800,fontSize:18}}>{modal==="add"?"Novo Lead":"Editar Lead"}</div>
+              <button className="btn" onClick={fecharModal} style={{color:"#3d5270",background:"none",fontSize:22,lineHeight:1}}>✕</button>
+            </div>
+            <div style={{display:"grid",gap:10}}>
+              {[["Nome completo *","name","text"],["Empresa","company","text"],["Telefone principal","phone1","text"],["Telefone secundário","phone2","text"],["Email","email","email"],["Cidade","city","text"],["Estado (UF)","state","text"],["Valor estimado (R$)","value","text"],["Potência (kWp)","kwp","number"],["Concessionária","concessionaria","text"],["Probabilidade","probability","text"]].map(([lbl,key,type])=>(
+                <div key={key}><div className="lbl">{lbl}</div><input className="campo" type={type} value={form[key]||""} onChange={e=>setForm(f=>({...f,[key]:e.target.value}))}/></div>
+              ))}
+              <div><div className="lbl">Status</div>
+                <select className="campo" value={form.status||"prospect"} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>
+                  {STATUS_KEYS.map(k=><option key={k} value={k}>{STATUS_MAP[k].label}</option>)}
+                </select>
+              </div>
+              <div><div className="lbl">Histórico / Observações</div>
+                <textarea className="campo" rows={3} value={form.history||""} onChange={e=>setForm(f=>({...f,history:e.target.value}))} style={{resize:"vertical"}}/>
+              </div>
+              <div><div className="lbl">Etapas</div>
+                {[["Orçamento","budget"],["Proposta enviada","proposal"],["Entregue","delivered"],["Fechado","closed"],["Pós-venda","post_sales"]].map(([lbl,key])=>(
+                  <label key={key} className="check-row"><input type="checkbox" checked={!!form[key]} onChange={e=>setForm(f=>({...f,[key]:e.target.checked}))}/>{lbl}</label>
+                ))}
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,marginTop:20}}>
+              <button className="btn" onClick={salvarLead} style={{flex:1,background:"linear-gradient(135deg,#f97316,#fb923c)",color:"#fff",borderRadius:10,padding:13,fontWeight:700,fontSize:15,boxShadow:"0 4px 14px rgba(249,115,22,.3)"}}>
+                {modal==="add"?"➕ Adicionar":"💾 Salvar"}
+              </button>
+              <button className="btn" onClick={fecharModal} style={{background:"#1a2840",color:"#647d9e",borderRadius:10,padding:"13px 16px",fontWeight:600}}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast&&<div className="toast" style={{background:toast.tipo==="erro"?"#4a0f0f":"#0d3320",color:toast.tipo==="erro"?"#fca5a5":"#6ee7b7"}}>{toast.msg}</div>}
+    </div>
+  );
+}
+
+/* ════════════════════════════════
+   ROOT
+════════════════════════════════ */
+function Root(){
+  const [usuario, setUsuario] = useState(()=>{
+    try{ const u=localStorage.getItem("inn_user"); return u?JSON.parse(u):null; }catch{ return null; }
+  });
+
+  function onLogin(u){ setUsuario(u); }
+  function onLogout(){ localStorage.removeItem("inn_user"); setUsuario(null); }
+
+  if(!usuario) return <TelaLogin onLogin={onLogin}/>;
+  return <AppPrincipal usuario={usuario} onLogout={onLogout}/>;
+}
+
+ReactDOM.render(<Root/>, document.getElementById("root"));
+</script>
+</body>
+</html>
