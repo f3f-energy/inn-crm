@@ -27,17 +27,20 @@ const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 const STATUS_MAP = {
-  "prospect":          { label:"Lead",             cor:"#f59e0b" },
-  "lead":              { label:"Contato feito",     cor:"#3b82f6" },
-  "proposal":          { label:"Proposta enviada",  cor:"#8b5cf6" },
-  "contract":          { label:"Visita agendada",   cor:"#06b6d4" },
-  "power-of-attorney": { label:"Procuração",        cor:"#ec4899" },
-  "client":            { label:"Fechado",           cor:"#10b981" },
+  "sondar":            { label:"1 - Sondar",    cor:"#94a3b8" },
+  "lead":              { label:"2 - Lead",      cor:"#f59e0b" },
+  "agendar":           { label:"3 - Agendar",   cor:"#3b82f6" },
+  "visitar":           { label:"4 - Visitar",   cor:"#06b6d4" },
+  "prospect":          { label:"5 - Prospect",  cor:"#8b5cf6" },
+  "proposal":          { label:"6 - Proposta",  cor:"#f97316" },
+  "contract":          { label:"7 - Contrato",  cor:"#ec4899" },
+  "power-of-attorney": { label:"8 - Procuração",cor:"#a855f7" },
+  "client":            { label:"9 - Fechado",   cor:"#10b981" },
 };
 const STATUS_KEYS = Object.keys(STATUS_MAP);
 const hoje = new Date().toISOString().slice(0,10);
 const REL_VAZIO = { total_hoje:0, telefone:0, escritorio:0, visitas:0, lead_quente:"", objecao:"", fechamentos_esperados:[{nome:"",valor:""}], nao_fecharam:[{nome:"",motivo:""}], amanha:"" };
-const FORM_VAZIO = { name:"", company:"", phone1:"", phone2:"", email:"", status:"prospect", city:"", state:"", value:"", kwp:"", history:"", probability:"", owner:"", visit_or_call:"0", budget:false, proposal:false, delivered:false, closed:false, post_sales:false, concessionaria:"" };
+const FORM_VAZIO = { name:"", company:"", phone1:"", phone2:"", email:"", status:"sondar", city:"", state:"GO", value:"", kwp:"", history:"", probability:"", owner:"", visit_or_call:"0", budget:false, proposal:false, delivered:false, closed:false, post_sales:false, concessionaria:"Equatorial", prospectando:true };
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap');
@@ -148,6 +151,242 @@ function TelaLogin({ onLogin }){
 }
 
 /* ════════════════════════════════
+   RELATÓRIO INTELIGENTE
+════════════════════════════════ */
+function RelatorioInteligente({ usuario, sb, hoje, STATUS_MAP, fmtValor }){
+  const { useState, useEffect } = React;
+  const [dados, setDados] = useState(null);
+  const [carregando, setCarregando] = useState(true);
+  const [leadQuente, setLeadQuente] = useState("");
+  const [objecao, setObjecao] = useState("");
+  const [amanha, setAmanha] = useState("");
+  const [copiado, setCopiado] = useState(false);
+
+  useEffect(()=>{
+    async function carregar(){
+      setCarregando(true);
+      // Leads criados hoje
+      const {data:criados} = await sb.from("leads").select("*")
+        .gte("created_at", hoje+"T00:00:00")
+        .lte("created_at", hoje+"T23:59:59")
+        .eq("owner", usuario.name);
+      // Leads com contato hoje (visit_or_call > 0 e updated_at hoje)
+      const {data:contatados} = await sb.from("leads").select("*")
+        .gte("updated_at", hoje+"T00:00:00")
+        .lte("updated_at", hoje+"T23:59:59")
+        .eq("owner", usuario.name)
+        .gt("visit_or_call", "0");
+      // Visitas agendadas hoje
+      const {data:visitas} = await sb.from("leads").select("*")
+        .eq("status","visitar")
+        .eq("owner", usuario.name);
+      // Propostas abertas
+      const {data:propostas} = await sb.from("leads").select("*")
+        .eq("status","proposal")
+        .eq("owner", usuario.name);
+      // Fechados
+      const {data:fechados} = await sb.from("leads").select("*")
+        .eq("status","client")
+        .eq("owner", usuario.name);
+
+      setDados({
+        criados: criados||[],
+        contatados: contatados||[],
+        visitas: visitas||[],
+        propostas: propostas||[],
+        fechados: fechados||[],
+      });
+
+      // Carregar rascunho salvo
+      try{
+        const s=localStorage.getItem("inn_rel_sub_"+hoje);
+        if(s){ const p=JSON.parse(s); setLeadQuente(p.leadQuente||""); setObjecao(p.objecao||""); setAmanha(p.amanha||""); }
+      }catch{}
+      setCarregando(false);
+    }
+    carregar();
+  },[]);
+
+  function salvarRascunho(lq,ob,am){
+    try{ localStorage.setItem("inn_rel_sub_"+hoje, JSON.stringify({leadQuente:lq,objecao:ob,amanha:am})); }catch{}
+  }
+
+  function gerarTexto(){
+    if(!dados) return "";
+    const d = new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"});
+    const nome = usuario.name.split(" ")[0];
+    let txt = `☀️ *RELATÓRIO DIÁRIO INN*\n👤 ${nome}\n📅 ${d}\n${"─".repeat(30)}\n\n`;
+    txt += `*1️⃣ Atividade de hoje:*\n`;
+    txt += `   📋 Leads cadastrados: ${dados.criados.length}\n`;
+    txt += `   📞 Contatos realizados: ${dados.contatados.length}\n`;
+    txt += `   🚗 Em visita: ${dados.visitas.length}\n`;
+    if(dados.criados.length>0){
+      txt += `\n*2️⃣ Novos leads de hoje:*\n`;
+      dados.criados.slice(0,5).forEach(l=>{ txt+=`   • ${l.name}${l.company?` · ${l.company}`:""}${l.city?` · ${l.city}`:""}\n`; });
+      if(dados.criados.length>5) txt+=`   ... e mais ${dados.criados.length-5}\n`;
+    }
+    if(leadQuente) txt += `\n*3️⃣ Lead quente do dia:*\n   🔥 ${leadQuente}\n`;
+    if(objecao) txt += `\n*4️⃣ Principal objeção:*\n   ⚠️ ${objecao}\n`;
+    if(dados.propostas.length>0){
+      txt += `\n*5️⃣ Propostas em aberto:*\n`;
+      dados.propostas.forEach(l=>{ txt+=`   💰 ${l.name}${l.value?` — ${fmtValor(l.value)}`:""}\n`; });
+    }
+    if(dados.fechados.length>0){
+      txt += `\n*6️⃣ Fechamentos:*\n`;
+      dados.fechados.forEach(l=>{ txt+=`   ✅ ${l.name}${l.value?` — ${fmtValor(l.value)}`:""}\n`; });
+    }
+    if(amanha) txt += `\n*7️⃣ Plano de amanhã:*\n   📋 ${amanha}\n`;
+    txt += `\n${"─".repeat(30)}\n_Enviado via INN CRM Solar_`;
+    return txt;
+  }
+
+  function copiar(){
+    navigator.clipboard.writeText(gerarTexto()).then(()=>{ setCopiado(true); setTimeout(()=>setCopiado(false),3000); });
+  }
+
+  if(carregando) return <div style={{textAlign:"center",padding:40,color:"#f97316"}}>⏳ Carregando dados do dia...</div>;
+
+  return(
+    <div className="fade">
+      <div style={{fontWeight:800,fontSize:18,marginBottom:4}}>📋 Relatório do Dia</div>
+      <div style={{fontSize:12,color:"#3d5270",marginBottom:16}}>Dados puxados automaticamente do banco.</div>
+
+      {/* RESUMO AUTOMÁTICO */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+        {[
+          {label:"Leads hoje",val:dados.criados.length,cor:"#f97316"},
+          {label:"Contatos",val:dados.contatados.length,cor:"#3b82f6"},
+          {label:"Em visita",val:dados.visitas.length,cor:"#06b6d4"},
+          {label:"Propostas",val:dados.propostas.length,cor:"#8b5cf6"},
+          {label:"Fechamentos",val:dados.fechados.length,cor:"#10b981"},
+        ].map(s=>(
+          <div key={s.label} className="card" style={{padding:"14px 16px",position:"relative",overflow:"hidden"}}>
+            <div style={{fontSize:26,fontWeight:800,color:s.cor}}>{s.val}</div>
+            <div style={{fontSize:11,color:"#3d5270",fontWeight:600}}>{s.label}</div>
+            <div style={{position:"absolute",right:-6,top:-6,width:50,height:50,borderRadius:"50%",background:`${s.cor}15`}}/>
+          </div>
+        ))}
+      </div>
+
+      {/* NOVOS LEADS */}
+      {dados.criados.length>0&&(
+        <div className="rel-bloco" style={{marginBottom:12}}>
+          <div className="lbl">Novos leads cadastrados hoje</div>
+          {dados.criados.map(l=>(
+            <div key={l.id} style={{fontSize:13,color:"#94a3b8",padding:"4px 0",borderBottom:"1px solid #1a2840"}}>
+              {l.name}{l.company?` · ${l.company}`:""}{l.city?` · ${l.city}`:""}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* CAMPOS SUBJETIVOS */}
+      <div className="rel-bloco" style={{marginBottom:10}}>
+        <div className="lbl">🔥 Lead quente do dia</div>
+        <input className="campo" placeholder="Ex: Marcone Armazém Purim" value={leadQuente}
+          onChange={e=>{ setLeadQuente(e.target.value); salvarRascunho(e.target.value,objecao,amanha); }} style={{marginTop:8}}/>
+      </div>
+      <div className="rel-bloco" style={{marginBottom:10}}>
+        <div className="lbl">⚠️ Principal objeção</div>
+        <input className="campo" placeholder="Ex: Financiamento, falta de dinheiro..." value={objecao}
+          onChange={e=>{ setObjecao(e.target.value); salvarRascunho(leadQuente,e.target.value,amanha); }} style={{marginTop:8}}/>
+      </div>
+      <div className="rel-bloco" style={{marginBottom:16}}>
+        <div className="lbl">📋 Plano de amanhã</div>
+        <textarea className="campo" rows={2} placeholder="Quem visitar, ligar ou dar continuidade..." value={amanha}
+          onChange={e=>{ setAmanha(e.target.value); salvarRascunho(leadQuente,objecao,e.target.value); }} style={{marginTop:8,resize:"none"}}/>
+      </div>
+
+      {/* PREVIEW */}
+      <div className="secao">Pré-visualização</div>
+      <div style={{background:"#060c1a",border:"1px solid #1a2840",borderRadius:12,padding:16,marginBottom:16,fontFamily:"monospace",fontSize:12,color:"#94a3b8",lineHeight:1.8,whiteSpace:"pre-wrap",wordBreak:"break-word"}}>
+        {gerarTexto()}
+      </div>
+
+      <div style={{display:"flex",gap:10}}>
+        <button className="btn" onClick={copiar} style={{flex:1,background:copiado?"linear-gradient(135deg,#10b981,#059669)":"#1a2840",color:copiado?"#fff":"#94a3b8",borderRadius:12,padding:14,fontWeight:700,fontSize:14,transition:"all .3s"}}>
+          {copiado?"✅ Copiado!":"📋 Copiar"}
+        </button>
+        <button className="btn" onClick={()=>window.open(`https://wa.me/?text=${encodeURIComponent(gerarTexto())}`,"_blank")} style={{flex:1,background:"linear-gradient(135deg,#25d366,#128c7e)",color:"#fff",borderRadius:12,padding:14,fontWeight:700,fontSize:14}}>
+          💬 WhatsApp
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════
+   CAMPOS AVANÇADOS RECOLHÍVEIS
+════════════════════════════════ */
+function CamposAvancados({ form, setForm }){
+  const { useState } = React;
+  const [aberto, setAberto] = useState(false);
+
+  const isEmpresa = !!(form.company && form.company.trim());
+  const PRECO = isEmpresa ? 3200 : 3500;
+  const TIPO = isEmpresa ? "Empresarial" : "Residencial";
+
+  function handleValor(v){
+    setForm(f=>{
+      const val = parseFloat(v.replace(/\D/g,""));
+      const kwp = val && PRECO ? (val/PRECO).toFixed(2) : "";
+      return {...f, value:v, kwp:kwp||f.kwp};
+    });
+  }
+
+  function handleKwp(v){
+    setForm(f=>{
+      const kwp = parseFloat(v);
+      const val = kwp && PRECO ? Math.round(kwp*PRECO) : "";
+      return {...f, kwp:v, value:val?String(val):f.value};
+    });
+  }
+
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"flex-end"}}>
+        <button className="btn" onClick={()=>setAberto(!aberto)}
+          style={{width:40,height:40,borderRadius:"50%",background:aberto?"rgba(249,115,22,.25)":"rgba(249,115,22,.1)",color:"#f97316",border:"1px solid rgba(249,115,22,.3)",fontSize:22,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          {aberto?"−":"+"}
+        </button>
+      </div>
+
+      {aberto&&(
+        <div style={{display:"grid",gap:10,marginTop:8,padding:14,background:"#060c1a",borderRadius:12,border:"1px solid #1a2840"}}>
+
+          <input className="campo" placeholder="TEL SECUNDÁRIO" value={form.phone2||""} onChange={e=>setForm(f=>({...f,phone2:e.target.value}))}/>
+          <input className="campo" placeholder="MAIL" type="email" value={form.email||""} onChange={e=>setForm(f=>({...f,email:e.target.value}))}/>
+
+          {/* Indicador de tipo e preço */}
+          <div style={{background:"rgba(249,115,22,.08)",border:"1px solid rgba(249,115,22,.2)",borderRadius:8,padding:"6px 12px",fontSize:12,color:"#f97316",fontWeight:600}}>
+            {TIPO} · R$ {PRECO.toLocaleString("pt-BR")}/kWp — digite valor OU kWp, o outro calcula automaticamente
+          </div>
+
+          {/* VALOR + kWp calculados automaticamente */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            <div>
+              <div style={{fontSize:10,color:"#3d5270",marginBottom:4,textTransform:"uppercase",fontWeight:700}}>Valor Estimado (R$)</div>
+              <input className="campo" placeholder="Ex: 15000" value={form.value||""} onChange={e=>handleValor(e.target.value)}/>
+            </div>
+            <div>
+              <div style={{fontSize:10,color:"#3d5270",marginBottom:4,textTransform:"uppercase",fontWeight:700}}>Potência (kWp)</div>
+              <input className="campo" placeholder="Ex: 4.29" value={form.kwp||""} onChange={e=>handleKwp(e.target.value)}/>
+            </div>
+          </div>
+
+          {/* CONCESSIONÁRIA */}
+          <input className="campo" placeholder="CONCESSIONÁRIA" value={form.concessionaria||"Equatorial"} onChange={e=>setForm(f=>({...f,concessionaria:e.target.value}))}/>
+
+          {/* PROBABILIDADE */}
+          <input className="campo" placeholder="PROBABILIDADE" value={form.probability||""} onChange={e=>setForm(f=>({...f,probability:e.target.value}))}/>
+
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ════════════════════════════════
    APP PRINCIPAL
 ════════════════════════════════ */
 function AppPrincipal({ usuario, onLogout }){
@@ -234,13 +473,13 @@ function AppPrincipal({ usuario, onLogout }){
     setSincStatus("sincronizando");
     const payload={
       name:form.name, company:form.company||null, phone1:form.phone1||null, phone2:form.phone2||null,
-      email:form.email||null, status:form.status||"prospect", city:form.city||null, state:form.state||null,
+      email:form.email||null, status:form.status||"prospect", city:form.city||null, state:form.state||"GO",
       value:form.value?parseFloat(String(form.value).replace(/[^\d.]/g,"")):null,
       kwp:form.kwp?parseFloat(form.kwp):null, history:form.history||null,
       probability:form.probability||null, owner:form.owner||usuario.name,
       visit_or_call:form.visit_or_call||"0", budget:!!form.budget, proposal:!!form.proposal,
       delivered:!!form.delivered, closed:!!form.closed, post_sales:!!form.post_sales,
-      concessionaria:form.concessionaria||null,
+      concessionaria:form.concessionaria||"Equatorial",
     };
     let error;
     if(modal==="add"){ ({error}=await sb.from("leads").insert(payload)); if(!error) aviso("Lead adicionado! ✅"); }
@@ -336,11 +575,12 @@ function AppPrincipal({ usuario, onLogout }){
     setSincStatus("sincronizando");
     const payload={
       name:voiceParsed.name, company:voiceParsed.company||null, phone1:voiceParsed.phone1||null,
-      city:voiceParsed.city||null, state:voiceParsed.state||null,
+      city:voiceParsed.city||null, state:voiceParsed.state||"GO",
       status:voiceParsed.status||"prospect",
       value:voiceParsed.value?parseFloat(voiceParsed.value):null,
       kwp:voiceParsed.kwp?parseFloat(voiceParsed.kwp):null,
       history:voiceParsed.history||null, owner:usuario.name,
+      concessionaria:"Equatorial",
     };
     const {error}=await sb.from("leads").insert(payload);
     if(error) aviso("Erro: "+error.message,"erro"); else aviso("Lead salvo! ✅");
@@ -591,65 +831,8 @@ function AppPrincipal({ usuario, onLogout }){
 
         {/* ══ RELATÓRIO ══ */}
         {aba==="relatorio"&&(
-          <div className="fade">
-            <div style={{fontWeight:800,fontSize:18,marginBottom:4}}>Relatório Diário</div>
-            <div style={{fontSize:12,color:"#3d5270",marginBottom:20}}>Preencha e envie para seu gestor.</div>
-            <div className="rel-bloco">
-              <div className="lbl">1️⃣ Clientes contatados hoje</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:8}}>
-                {[["Total","total_hoje"],["📞 Telefone","telefone"],["🏢 Escritório","escritorio"],["🚗 Visitas","visitas"]].map(([lbl,key])=>(
-                  <div key={key}><div style={{fontSize:11,color:"#3d5270",marginBottom:4}}>{lbl}</div>
-                  <input className="campo" type="number" min="0" value={relatorio[key]} onChange={e=>setRel(key,Number(e.target.value))} style={{padding:"8px 12px"}}/></div>
-                ))}
-              </div>
-            </div>
-            <div className="rel-bloco">
-              <div className="lbl">2️⃣ Lead quente trabalhado hoje</div>
-              <input className="campo" placeholder="Ex: Geladinhos Gourmet" value={relatorio.lead_quente} onChange={e=>setRel("lead_quente",e.target.value)} style={{marginTop:8}}/>
-            </div>
-            <div className="rel-bloco">
-              <div className="lbl">3️⃣ Principal objeção</div>
-              <input className="campo" placeholder="Ex: Financiamento, organização do dinheiro..." value={relatorio.objecao} onChange={e=>setRel("objecao",e.target.value)} style={{marginTop:8}}/>
-            </div>
-            <div className="rel-bloco">
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                <div className="lbl" style={{margin:0}}>4️⃣ Vendas que fecham essa semana</div>
-                <button className="mini-btn" onClick={addFechamento}>+ Adicionar</button>
-              </div>
-              {relatorio.fechamentos_esperados.map((f,i)=>(
-                <div key={i} style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
-                  <input className="campo" placeholder="Nome do cliente" value={f.nome} onChange={e=>setFechamento(i,"nome",e.target.value)} style={{flex:2}}/>
-                  <input className="campo" placeholder="Valor R$" value={f.valor} onChange={e=>setFechamento(i,"valor",e.target.value)} style={{flex:1}}/>
-                  {relatorio.fechamentos_esperados.length>1&&<button className="del-btn" onClick={()=>remFechamento(i)}>✕</button>}
-                </div>
-              ))}
-            </div>
-            <div className="rel-bloco">
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                <div className="lbl" style={{margin:0}}>5️⃣ Clientes que ainda não fecharam</div>
-                <button className="mini-btn" onClick={addNaoFechou}>+ Adicionar</button>
-              </div>
-              {relatorio.nao_fecharam.map((n,i)=>(
-                <div key={i} style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
-                  <input className="campo" placeholder="Nome" value={n.nome} onChange={e=>setNaoFechou(i,"nome",e.target.value)} style={{flex:1}}/>
-                  <input className="campo" placeholder="Por quê não fechou?" value={n.motivo} onChange={e=>setNaoFechou(i,"motivo",e.target.value)} style={{flex:2}}/>
-                  {relatorio.nao_fecharam.length>1&&<button className="del-btn" onClick={()=>remNaoFechou(i)}>✕</button>}
-                </div>
-              ))}
-            </div>
-            <div className="rel-bloco">
-              <div className="lbl">6️⃣ Plano de amanhã</div>
-              <textarea className="campo" rows={3} placeholder="Quem ligar, visitar ou dar continuidade..." value={relatorio.amanha} onChange={e=>setRel("amanha",e.target.value)} style={{marginTop:8,resize:"vertical"}}/>
-            </div>
-            <div className="secao">Pré-visualização</div>
-            <div style={{background:"#060c1a",border:"1px solid #1a2840",borderRadius:12,padding:16,marginBottom:16,fontFamily:"monospace",fontSize:12,color:"#94a3b8",lineHeight:1.8,whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{gerarTextoRelatorio()}</div>
-            <div style={{display:"flex",gap:10}}>
-              <button className="btn" onClick={copiarRelatorio} style={{flex:1,background:relCopiado?"linear-gradient(135deg,#10b981,#059669)":"#1a2840",color:relCopiado?"#fff":"#94a3b8",borderRadius:12,padding:14,fontWeight:700,fontSize:14,transition:"all .3s"}}>{relCopiado?"✅ Copiado!":"📋 Copiar Texto"}</button>
-              <button className="btn" onClick={enviarRelWhatsApp} style={{flex:1,background:"linear-gradient(135deg,#25d366,#128c7e)",color:"#fff",borderRadius:12,padding:14,fontWeight:700,fontSize:14}}>💬 WhatsApp</button>
-            </div>
-          </div>
+          <RelatorioInteligente usuario={usuario} sb={sb} hoje={hoje} STATUS_MAP={STATUS_MAP} fmtValor={fmtValor}/>
         )}
-
         {/* ══ VOZ ══ */}
         {aba==="voice"&&(
           <div className="fade" style={{textAlign:"center"}}>
@@ -731,29 +914,40 @@ function AppPrincipal({ usuario, onLogout }){
       {(modal==="add"||modal==="edit")&&(
         <div className="overlay" onClick={fecharModal}>
           <div className="modal fade" onClick={e=>e.stopPropagation()}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
               <div style={{fontWeight:800,fontSize:18}}>{modal==="add"?"Novo Lead":"Editar Lead"}</div>
               <button className="btn" onClick={fecharModal} style={{color:"#3d5270",background:"none",fontSize:22,lineHeight:1}}>✕</button>
             </div>
             <div style={{display:"grid",gap:10}}>
-              {[["Nome completo *","name","text"],["Empresa","company","text"],["Telefone principal","phone1","text"],["Telefone secundário","phone2","text"],["Email","email","email"],["Cidade","city","text"],["Estado (UF)","state","text"],["Valor estimado (R$)","value","text"],["Potência (kWp)","kwp","number"],["Concessionária","concessionaria","text"],["Probabilidade","probability","text"]].map(([lbl,key,type])=>(
-                <div key={key}><div className="lbl">{lbl}</div><input className="campo" type={type} value={form[key]||""} onChange={e=>setForm(f=>({...f,[key]:e.target.value}))}/></div>
-              ))}
-              <div><div className="lbl">Status</div>
-                <select className="campo" value={form.status||"prospect"} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>
-                  {STATUS_KEYS.map(k=><option key={k} value={k}>{STATUS_MAP[k].label}</option>)}
-                </select>
+
+              {/* NOME */}
+              <input className="campo" placeholder="NOME / RAZÃO SOCIAL *" value={form.name||""} onChange={e=>setForm(f=>({...f,name:e.target.value}))}/>
+
+              {/* EMPRESA */}
+              <input className="campo" placeholder="RESIDENCIAL / EMPRESA" value={form.company||""} onChange={e=>setForm(f=>({...f,company:e.target.value}))}/>
+
+              {/* TELEFONE */}
+              <input className="campo" placeholder="TELEFONE" value={form.phone1||""} onChange={e=>setForm(f=>({...f,phone1:e.target.value}))}/>
+
+              {/* CIDADE + UF na mesma linha */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 64px",gap:8}}>
+                <input className="campo" placeholder="CIDADE" value={form.city||""} onChange={e=>setForm(f=>({...f,city:e.target.value}))}/>
+                <input className="campo" placeholder="UF" value={form.state||"GO"} onChange={e=>setForm(f=>({...f,state:e.target.value}))}/>
               </div>
-              <div><div className="lbl">Histórico / Observações</div>
-                <textarea className="campo" rows={3} value={form.history||""} onChange={e=>setForm(f=>({...f,history:e.target.value}))} style={{resize:"vertical"}}/>
-              </div>
-              <div><div className="lbl">Etapas</div>
-                {[["Orçamento","budget"],["Proposta enviada","proposal"],["Entregue","delivered"],["Fechado","closed"],["Pós-venda","post_sales"]].map(([lbl,key])=>(
-                  <label key={key} className="check-row"><input type="checkbox" checked={!!form[key]} onChange={e=>setForm(f=>({...f,[key]:e.target.checked}))}/>{lbl}</label>
-                ))}
-              </div>
+
+              {/* STATUS */}
+              <select className="campo" value={form.status||"sondar"} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>
+                {STATUS_KEYS.map(k=><option key={k} value={k}>{STATUS_MAP[k].label}</option>)}
+              </select>
+
+              {/* HISTÓRICO */}
+              <textarea className="campo" rows={2} placeholder="HISTÓRICO / OBSERVAÇÃO" value={form.history||""} onChange={e=>setForm(f=>({...f,history:e.target.value}))} style={{resize:"none"}}/>
+
+              {/* BOTÃO + CAMPOS AVANÇADOS */}
+              <CamposAvancados form={form} setForm={setForm}/>
+
             </div>
-            <div style={{display:"flex",gap:8,marginTop:20}}>
+            <div style={{display:"flex",gap:8,marginTop:18}}>
               <button className="btn" onClick={salvarLead} style={{flex:1,background:"linear-gradient(135deg,#f97316,#fb923c)",color:"#fff",borderRadius:10,padding:13,fontWeight:700,fontSize:15,boxShadow:"0 4px 14px rgba(249,115,22,.3)"}}>
                 {modal==="add"?"➕ Adicionar":"💾 Salvar"}
               </button>
@@ -762,7 +956,6 @@ function AppPrincipal({ usuario, onLogout }){
           </div>
         </div>
       )}
-
       {toast&&<div className="toast" style={{background:toast.tipo==="erro"?"#4a0f0f":"#0d3320",color:toast.tipo==="erro"?"#fca5a5":"#6ee7b7"}}>{toast.msg}</div>}
     </div>
   );
@@ -787,4 +980,3 @@ ReactDOM.render(<Root/>, document.getElementById("root"));
 </script>
 </body>
 </html>
-  
