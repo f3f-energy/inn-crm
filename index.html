@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>INN · CRM Solar</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='22' fill='%23f97316'/><line x1='50' y1='4' x2='50' y2='20' stroke='%23f97316' stroke-width='9' stroke-linecap='round'/><line x1='50' y1='80' x2='50' y2='96' stroke='%23f97316' stroke-width='9' stroke-linecap='round'/><line x1='4' y1='50' x2='20' y2='50' stroke='%23f97316' stroke-width='9' stroke-linecap='round'/><line x1='80' y1='50' x2='96' y2='50' stroke='%23f97316' stroke-width='9' stroke-linecap='round'/></svg>"/>
+  <title>INN - CRM</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='22' fill='%237c3aed'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%23fbbf24' font-family='Arial' font-weight='bold'>I</text></svg>"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
-    body{background:#080d1a;font-family:'Segoe UI',sans-serif;color:#e8eaf6;}
+    body{background:#0a0612;font-family:'Segoe UI',sans-serif;color:#e8eaf6;}
     ::-webkit-scrollbar{width:4px;}
-    ::-webkit-scrollbar-track{background:#080d1a;}
-    ::-webkit-scrollbar-thumb{background:#f97316;border-radius:4px;}
+    ::-webkit-scrollbar-track{background:#0a0612;}
+    ::-webkit-scrollbar-thumb{background:#7c3aed;border-radius:4px;}
   </style>
 </head>
 <body>
@@ -27,134 +27,127 @@ const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 const STATUS_MAP = {
-  "sondar":            { label:"1 - Sondar",    cor:"#94a3b8" },
-  "lead":              { label:"2 - Lead",      cor:"#f59e0b" },
-  "agendar":           { label:"3 - Agendar",   cor:"#3b82f6" },
-  "visitar":           { label:"4 - Visitar",   cor:"#06b6d4" },
-  "prospect":          { label:"5 - Prospect",  cor:"#8b5cf6" },
-  "proposal":          { label:"6 - Proposta",  cor:"#f97316" },
-  "contract":          { label:"7 - Contrato",  cor:"#ec4899" },
-  "power-of-attorney": { label:"8 - Procuração",cor:"#a855f7" },
-  "client":            { label:"9 - Fechado",   cor:"#10b981" },
+  "sondar":            { label:"1 - Sondar",     cor:"#94a3b8" },
+  "lead":              { label:"2 - Lead",        cor:"#fbbf24" },
+  "agendar":           { label:"3 - Agendar",     cor:"#3b82f6" },
+  "visitar":           { label:"4 - Visitar",     cor:"#06b6d4" },
+  "prospect":          { label:"5 - Prospect",    cor:"#7c3aed" },
+  "proposal":          { label:"6 - Proposta",    cor:"#a855f7" },
+  "contract":          { label:"7 - Contrato",    cor:"#ec4899" },
+  "power-of-attorney": { label:"8 - Procuração",  cor:"#f97316" },
+  "client":            { label:"9 - Fechado",     cor:"#10b981" },
 };
 const STATUS_KEYS = Object.keys(STATUS_MAP);
+const TIPOS = ["Residencial","Empresarial","Outro"];
 const hoje = new Date().toISOString().slice(0,10);
-const REL_VAZIO = { total_hoje:0, telefone:0, escritorio:0, visitas:0, lead_quente:"", objecao:"", fechamentos_esperados:[{nome:"",valor:""}], nao_fecharam:[{nome:"",motivo:""}], amanha:"" };
-const FORM_VAZIO = { name:"", company:"", phone1:"", phone2:"", email:"", status:"sondar", city:"", state:"GO", value:"", kwp:"", history:"", probability:"", owner:"", visit_or_call:"0", budget:false, proposal:false, delivered:false, closed:false, post_sales:false, concessionaria:"Equatorial", prospectando:true };
+const FORM_VAZIO = {
+  name:"", type:"Residencial", phone1:"", phone2:"", email:"",
+  status:"sondar", city:"", state:"GO", value:"", kwp:"",
+  history:"", probability:"", owner:"", visit_or_call:"0",
+  budget:false, proposal:false, delivered:false, closed:false,
+  post_sales:false, concessionaria:"Equatorial", prospectando:true,
+  referencia:"", indicacao:""
+};
+
+const PRECO = { Residencial:3500, Empresarial:3200, Outro:3500 };
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap');
   .btn{cursor:pointer;border:none;font-family:inherit;transition:all .18s;}
   .btn:active{transform:scale(.96);}
-  .card{background:linear-gradient(135deg,#0f1a2e,#162033);border:1px solid #1a2840;border-radius:16px;}
-  .nav-btn{background:none;border:none;cursor:pointer;padding:9px 16px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;color:#4b6080;transition:all .18s;white-space:nowrap;}
-  .nav-btn.ativo{background:linear-gradient(135deg,#f97316,#fb923c);color:#fff;box-shadow:0 4px 16px rgba(249,115,22,.3);}
-  .nav-btn:hover:not(.ativo){color:#f97316;background:rgba(249,115,22,.08);}
+  .card{background:linear-gradient(135deg,#12082a,#1a0f38);border:1px solid #2d1b69;border-radius:16px;}
+  .nav-btn{background:none;border:none;cursor:pointer;padding:9px 16px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;color:#6b5a8e;transition:all .18s;white-space:nowrap;}
+  .nav-btn.ativo{background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fbbf24;box-shadow:0 4px 16px rgba(124,58,237,.4);}
+  .nav-btn:hover:not(.ativo){color:#a78bfa;background:rgba(124,58,237,.1);}
   .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
-  .campo{background:#060c1a;border:1.5px solid #1a2840;border-radius:10px;padding:10px 14px;color:#e8eaf6;font-size:14px;width:100%;transition:border .18s;outline:none;font-family:inherit;}
-  .campo:focus{border-color:#f97316;}
+  .campo{background:#080412;border:1.5px solid #2d1b69;border-radius:10px;padding:10px 14px;color:#e8eaf6;font-size:14px;width:100%;transition:border .18s;outline:none;font-family:inherit;}
+  .campo:focus{border-color:#7c3aed;}
   .pulse{animation:pulse 1.4s infinite;}
-  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(249,115,22,.5);}50%{box-shadow:0 0 0 14px rgba(249,115,22,0);}}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,.5);}50%{box-shadow:0 0 0 14px rgba(124,58,237,0);}}
   .fade{animation:fade .3s ease;}
   @keyframes fade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
-  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;}
-  .modal{background:#0f1a2e;border:1px solid #1a2840;border-radius:20px;padding:24px;width:100%;max-width:520px;max-height:92vh;overflow-y:auto;}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;}
+  .modal{background:#12082a;border:1px solid #2d1b69;border-radius:20px;padding:24px;width:100%;max-width:520px;max-height:92vh;overflow-y:auto;}
   .linha{display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:12px;cursor:pointer;transition:background .15s;border:1px solid transparent;margin-bottom:8px;}
-  .linha:hover{background:rgba(249,115,22,.07);border-color:rgba(249,115,22,.2);}
+  .linha:hover{background:rgba(124,58,237,.1);border-color:rgba(124,58,237,.3);}
   .avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0;}
   .stat{padding:20px 22px;border-radius:16px;position:relative;overflow:hidden;cursor:pointer;}
   .toast{position:fixed;bottom:24px;right:24px;z-index:999;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;animation:fade .3s;box-shadow:0 8px 32px rgba(0,0,0,.4);}
-  .lbl{font-size:11px;color:#4b6080;font-weight:700;margin-bottom:5px;letter-spacing:.05em;text-transform:uppercase;}
-  .secao{font-size:11px;color:#4b6080;font-weight:700;margin-bottom:10px;margin-top:22px;letter-spacing:.06em;text-transform:uppercase;}
-  .rel-bloco{background:#060c1a;border:1px solid #1a2840;border-radius:12px;padding:16px;margin-bottom:10px;}
-  .mini-btn{cursor:pointer;border:none;font-family:inherit;background:rgba(249,115,22,.12);color:#f97316;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;}
+  .lbl{font-size:11px;color:#6b5a8e;font-weight:700;margin-bottom:5px;letter-spacing:.05em;text-transform:uppercase;}
+  .secao{font-size:11px;color:#6b5a8e;font-weight:700;margin-bottom:10px;margin-top:22px;letter-spacing:.06em;text-transform:uppercase;}
+  .rel-bloco{background:#080412;border:1px solid #2d1b69;border-radius:12px;padding:16px;margin-bottom:10px;}
+  .mini-btn{cursor:pointer;border:none;font-family:inherit;background:rgba(124,58,237,.15);color:#a78bfa;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;}
   .del-btn{cursor:pointer;border:none;font-family:inherit;background:rgba(239,68,68,.1);color:#ef4444;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;}
   .check-row{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;cursor:pointer;}
-  .check-row input{width:16px;height:16px;accent-color:#f97316;cursor:pointer;}
+  .check-row input{width:16px;height:16px;accent-color:#7c3aed;cursor:pointer;}
   .spin{display:inline-block;animation:spin 1s linear infinite;}
   @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
   .sync-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;flex-shrink:0;}
-  .login-input{background:#060c1a;border:1.5px solid #1a2840;border-radius:12px;padding:14px 16px;color:#e8eaf6;font-size:15px;width:100%;outline:none;font-family:inherit;transition:border .18s;}
-  .login-input:focus{border-color:#f97316;}
+  .busca-resultado{background:#12082a;border:1px solid #2d1b69;border-radius:10px;margin-top:4px;max-height:200px;overflow-y:auto;z-index:10;}
+  .busca-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid #2d1b69;font-size:13px;}
+  .busca-item:hover{background:rgba(124,58,237,.15);}
 `;
 
 function fmtValor(v){ if(!v&&v!==0)return""; const n=parseFloat(String(v).replace(/[^\d.]/g,"")); if(isNaN(n))return String(v); return"R$ "+n.toLocaleString("pt-BR",{minimumFractionDigits:2}); }
 function limpaNum(p){ const n=(p||"").replace(/\D/g,""); return n.startsWith("55")?n:`55${n}`; }
-function statusInfo(s){ return STATUS_MAP[s]||{label:s,cor:"#64748b"}; }
+function statusInfo(s){ return STATUS_MAP[s]||{label:s,cor:"#7c3aed"}; }
 
-/* ════════════════════════════════
-   TELA DE LOGIN
-════════════════════════════════ */
-function TelaLogin({ onLogin }){
-  const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
-  const [carregando, setCarregando] = useState(false);
-  const [erro, setErro] = useState("");
-  const [mostrarSenha, setMostrarSenha] = useState(false);
+/* ════ CAMPOS AVANÇADOS ════ */
+function CamposAvancados({ form, setForm }){
+  const [aberto, setAberto] = useState(false);
+  const tipo = form.type||"Residencial";
+  const preco = PRECO[tipo]||3500;
 
-  async function entrar(){
-    if(!email||!senha){ setErro("Preencha email e senha."); return; }
-    setCarregando(true); setErro("");
-    const { data, error } = await sb.from("users").select("*").eq("email", email.toLowerCase().trim()).eq("password", senha).single();
-    if(error||!data){ setErro("Email ou senha incorretos."); setCarregando(false); return; }
-    localStorage.setItem("inn_user", JSON.stringify(data));
-    onLogin(data);
-    setCarregando(false);
+  function handleValor(v){
+    setForm(f=>{
+      const val = parseFloat(v.replace(/\D/g,""));
+      const kwp = val ? (val/preco).toFixed(2) : "";
+      return {...f, value:v, kwp:kwp||f.kwp};
+    });
+  }
+  function handleKwp(v){
+    setForm(f=>{
+      const kwp = parseFloat(v);
+      const val = kwp ? Math.round(kwp*preco) : "";
+      return {...f, kwp:v, value:val?String(val):f.value};
+    });
   }
 
   return(
-    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24,background:"#080d1a"}}>
-      <style>{CSS}</style>
-      <div style={{width:"100%",maxWidth:380}}>
-        {/* Logo */}
-        <div style={{textAlign:"center",marginBottom:40}}>
-          <div style={{width:72,height:72,borderRadius:20,background:"linear-gradient(135deg,#f97316,#fb923c)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",boxShadow:"0 8px 32px rgba(249,115,22,.4)"}}>
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5">
-              <circle cx="12" cy="12" r="4"/>
-              <line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/>
-              <line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/>
-              <line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/>
-              <line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/>
-            </svg>
+    <div>
+      <div style={{display:"flex",justifyContent:"flex-end"}}>
+        <button className="btn" onClick={()=>setAberto(!aberto)}
+          style={{width:40,height:40,borderRadius:"50%",background:aberto?"rgba(124,58,237,.3)":"rgba(124,58,237,.1)",color:"#a78bfa",border:"1px solid rgba(124,58,237,.4)",fontSize:22,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          {aberto?"−":"+"}
+        </button>
+      </div>
+      {aberto&&(
+        <div style={{display:"grid",gap:10,marginTop:8,padding:14,background:"#080412",borderRadius:12,border:"1px solid #2d1b69"}}>
+          <input className="campo" placeholder="TEL SECUNDÁRIO" value={form.phone2||""} onChange={e=>setForm(f=>({...f,phone2:e.target.value}))}/>
+          <input className="campo" placeholder="MAIL" type="email" value={form.email||""} onChange={e=>setForm(f=>({...f,email:e.target.value}))}/>
+          <div style={{fontSize:11,color:"#fbbf24",background:"rgba(251,191,36,.08)",border:"1px solid rgba(251,191,36,.2)",borderRadius:8,padding:"6px 12px",fontWeight:600}}>
+            {tipo} · R$ {preco.toLocaleString("pt-BR")}/kWp — calcule automático
           </div>
-          <div style={{fontWeight:800,fontSize:36,letterSpacing:"-0.04em",color:"#fff"}}>INN</div>
-          <div style={{fontSize:13,color:"#3d5270",fontWeight:500,marginTop:4}}>Innovatis Energia Solar · CRM</div>
-        </div>
-
-        {/* Form */}
-        <div className="card" style={{padding:28}}>
-          <div style={{marginBottom:16}}>
-            <div className="lbl">Email</div>
-            <input className="login-input" type="email" placeholder="seu@email.com" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&entrar()}/>
-          </div>
-          <div style={{marginBottom:20}}>
-            <div className="lbl">Senha</div>
-            <div style={{position:"relative"}}>
-              <input className="login-input" type={mostrarSenha?"text":"password"} placeholder="••••••••" value={senha} onChange={e=>setSenha(e.target.value)} onKeyDown={e=>e.key==="Enter"&&entrar()}/>
-              <button className="btn" onClick={()=>setMostrarSenha(!mostrarSenha)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",color:"#3d5270",fontSize:18,padding:4}}>
-                {mostrarSenha?"🙈":"👁️"}
-              </button>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            <div>
+              <div className="lbl">Valor (R$)</div>
+              <input className="campo" placeholder="Ex: 15000" value={form.value||""} onChange={e=>handleValor(e.target.value)}/>
+            </div>
+            <div>
+              <div className="lbl">Potência (kWp)</div>
+              <input className="campo" placeholder="Ex: 4.29" value={form.kwp||""} onChange={e=>handleKwp(e.target.value)}/>
             </div>
           </div>
-          {erro&&<div style={{background:"rgba(239,68,68,.1)",color:"#fca5a5",borderRadius:10,padding:"10px 14px",fontSize:13,marginBottom:16,textAlign:"center"}}>{erro}</div>}
-          <button className="btn" onClick={entrar} disabled={carregando} style={{width:"100%",background:"linear-gradient(135deg,#f97316,#fb923c)",color:"#fff",borderRadius:12,padding:14,fontWeight:700,fontSize:16,boxShadow:"0 4px 20px rgba(249,115,22,.4)",opacity:carregando?.7:1}}>
-            {carregando?"Entrando... ⏳":"Entrar ☀️"}
-          </button>
+          <input className="campo" placeholder="CONCESSIONÁRIA" value={form.concessionaria||"Equatorial"} onChange={e=>setForm(f=>({...f,concessionaria:e.target.value}))}/>
+          <input className="campo" placeholder="PROBABILIDADE" value={form.probability||""} onChange={e=>setForm(f=>({...f,probability:e.target.value}))}/>
         </div>
-
-        <div style={{textAlign:"center",marginTop:24,fontSize:12,color:"#1e2d45"}}>
-          Innovatis Energia Solar © {new Date().getFullYear()}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
 
-/* ════════════════════════════════
-   RELATÓRIO INTELIGENTE
-════════════════════════════════ */
-function RelatorioInteligente({ usuario, sb, hoje, STATUS_MAP, fmtValor }){
-  const { useState, useEffect } = React;
+/* ════ RELATÓRIO INTELIGENTE ════ */
+function RelatorioInteligente({ usuario, sb, hoje, fmtValor }){
   const [dados, setDados] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [leadQuente, setLeadQuente] = useState("");
@@ -165,326 +158,240 @@ function RelatorioInteligente({ usuario, sb, hoje, STATUS_MAP, fmtValor }){
   useEffect(()=>{
     async function carregar(){
       setCarregando(true);
-      // Leads criados hoje
-      const {data:criados} = await sb.from("leads").select("*")
-        .gte("created_at", hoje+"T00:00:00")
-        .lte("created_at", hoje+"T23:59:59")
-        .eq("owner", usuario.name);
-      // Leads com contato hoje (visit_or_call > 0 e updated_at hoje)
-      const {data:contatados} = await sb.from("leads").select("*")
-        .gte("updated_at", hoje+"T00:00:00")
-        .lte("updated_at", hoje+"T23:59:59")
-        .eq("owner", usuario.name)
-        .gt("visit_or_call", "0");
-      // Visitas agendadas hoje
-      const {data:visitas} = await sb.from("leads").select("*")
-        .eq("status","visitar")
-        .eq("owner", usuario.name);
-      // Propostas abertas
-      const {data:propostas} = await sb.from("leads").select("*")
-        .eq("status","proposal")
-        .eq("owner", usuario.name);
-      // Fechados
-      const {data:fechados} = await sb.from("leads").select("*")
-        .eq("status","client")
-        .eq("owner", usuario.name);
-
-      setDados({
-        criados: criados||[],
-        contatados: contatados||[],
-        visitas: visitas||[],
-        propostas: propostas||[],
-        fechados: fechados||[],
-      });
-
-      // Carregar rascunho salvo
-      try{
-        const s=localStorage.getItem("inn_rel_sub_"+hoje);
-        if(s){ const p=JSON.parse(s); setLeadQuente(p.leadQuente||""); setObjecao(p.objecao||""); setAmanha(p.amanha||""); }
-      }catch{}
+      const [criados, contatados, visitas, propostas, fechados] = await Promise.all([
+        sb.from("leads").select("*").gte("created_at",hoje+"T00:00:00").lte("created_at",hoje+"T23:59:59").eq("owner",usuario.name),
+        sb.from("leads").select("*").gte("updated_at",hoje+"T00:00:00").lte("updated_at",hoje+"T23:59:59").eq("owner",usuario.name).gt("visit_or_call","0"),
+        sb.from("leads").select("*").eq("status","visitar").eq("owner",usuario.name),
+        sb.from("leads").select("*").eq("status","proposal").eq("owner",usuario.name),
+        sb.from("leads").select("*").eq("status","client").eq("owner",usuario.name),
+      ]);
+      setDados({ criados:criados.data||[], contatados:contatados.data||[], visitas:visitas.data||[], propostas:propostas.data||[], fechados:fechados.data||[] });
+      try{ const s=localStorage.getItem("inn_rel_"+hoje); if(s){ const p=JSON.parse(s); setLeadQuente(p.lq||""); setObjecao(p.ob||""); setAmanha(p.am||""); } }catch{}
       setCarregando(false);
     }
     carregar();
   },[]);
 
-  function salvarRascunho(lq,ob,am){
-    try{ localStorage.setItem("inn_rel_sub_"+hoje, JSON.stringify({leadQuente:lq,objecao:ob,amanha:am})); }catch{}
-  }
+  function salvar(lq,ob,am){ try{localStorage.setItem("inn_rel_"+hoje,JSON.stringify({lq,ob,am}));}catch{} }
 
   function gerarTexto(){
-    if(!dados) return "";
-    const d = new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"});
-    const nome = usuario.name.split(" ")[0];
-    let txt = `☀️ *RELATÓRIO DIÁRIO INN*\n👤 ${nome}\n📅 ${d}\n${"─".repeat(30)}\n\n`;
-    txt += `*1️⃣ Atividade de hoje:*\n`;
-    txt += `   📋 Leads cadastrados: ${dados.criados.length}\n`;
-    txt += `   📞 Contatos realizados: ${dados.contatados.length}\n`;
-    txt += `   🚗 Em visita: ${dados.visitas.length}\n`;
-    if(dados.criados.length>0){
-      txt += `\n*2️⃣ Novos leads de hoje:*\n`;
-      dados.criados.slice(0,5).forEach(l=>{ txt+=`   • ${l.name}${l.company?` · ${l.company}`:""}${l.city?` · ${l.city}`:""}\n`; });
-      if(dados.criados.length>5) txt+=`   ... e mais ${dados.criados.length-5}\n`;
-    }
-    if(leadQuente) txt += `\n*3️⃣ Lead quente do dia:*\n   🔥 ${leadQuente}\n`;
-    if(objecao) txt += `\n*4️⃣ Principal objeção:*\n   ⚠️ ${objecao}\n`;
-    if(dados.propostas.length>0){
-      txt += `\n*5️⃣ Propostas em aberto:*\n`;
-      dados.propostas.forEach(l=>{ txt+=`   💰 ${l.name}${l.value?` — ${fmtValor(l.value)}`:""}\n`; });
-    }
-    if(dados.fechados.length>0){
-      txt += `\n*6️⃣ Fechamentos:*\n`;
-      dados.fechados.forEach(l=>{ txt+=`   ✅ ${l.name}${l.value?` — ${fmtValor(l.value)}`:""}\n`; });
-    }
-    if(amanha) txt += `\n*7️⃣ Plano de amanhã:*\n   📋 ${amanha}\n`;
-    txt += `\n${"─".repeat(30)}\n_Enviado via INN CRM Solar_`;
+    if(!dados)return"";
+    const d=new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"});
+    let txt=`☀️ *RELATÓRIO DIÁRIO INN - CRM*\n👤 ${usuario.name.split(" ")[0]}\n📅 ${d}\n${"─".repeat(30)}\n\n`;
+    txt+=`*1️⃣ Atividade de hoje:*\n   📋 Leads cadastrados: ${dados.criados.length}\n   📞 Contatos realizados: ${dados.contatados.length}\n   🚗 Em visita: ${dados.visitas.length}\n`;
+    if(dados.criados.length>0){ txt+=`\n*2️⃣ Novos leads:*\n`; dados.criados.slice(0,5).forEach(l=>{ txt+=`   • ${l.name}${l.city?` · ${l.city}`:""}\n`; }); if(dados.criados.length>5)txt+=`   ... e mais ${dados.criados.length-5}\n`; }
+    if(leadQuente)txt+=`\n*3️⃣ Lead quente:*\n   🔥 ${leadQuente}\n`;
+    if(objecao)txt+=`\n*4️⃣ Principal objeção:*\n   ⚠️ ${objecao}\n`;
+    if(dados.propostas.length>0){ txt+=`\n*5️⃣ Propostas abertas:*\n`; dados.propostas.forEach(l=>{ txt+=`   💰 ${l.name}${l.value?` — ${fmtValor(l.value)}`:""}\n`; }); }
+    if(dados.fechados.length>0){ txt+=`\n*6️⃣ Fechamentos:*\n`; dados.fechados.forEach(l=>{ txt+=`   ✅ ${l.name}${l.value?` — ${fmtValor(l.value)}`:""}\n`; }); }
+    if(amanha)txt+=`\n*7️⃣ Amanhã:*\n   📋 ${amanha}\n`;
+    txt+=`\n${"─".repeat(30)}\n_Enviado via INN - CRM_`;
     return txt;
   }
 
-  function copiar(){
-    navigator.clipboard.writeText(gerarTexto()).then(()=>{ setCopiado(true); setTimeout(()=>setCopiado(false),3000); });
-  }
+  function copiar(){ navigator.clipboard.writeText(gerarTexto()).then(()=>{ setCopiado(true); setTimeout(()=>setCopiado(false),3000); }); }
 
-  if(carregando) return <div style={{textAlign:"center",padding:40,color:"#f97316"}}>⏳ Carregando dados do dia...</div>;
+  if(carregando)return<div style={{textAlign:"center",padding:40,color:"#7c3aed"}}>⏳ Carregando dados do dia...</div>;
 
   return(
     <div className="fade">
       <div style={{fontWeight:800,fontSize:18,marginBottom:4}}>📋 Relatório do Dia</div>
-      <div style={{fontSize:12,color:"#3d5270",marginBottom:16}}>Dados puxados automaticamente do banco.</div>
-
-      {/* RESUMO AUTOMÁTICO */}
+      <div style={{fontSize:12,color:"#6b5a8e",marginBottom:16}}>Dados automáticos do banco + suas anotações.</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
-        {[
-          {label:"Leads hoje",val:dados.criados.length,cor:"#f97316"},
-          {label:"Contatos",val:dados.contatados.length,cor:"#3b82f6"},
-          {label:"Em visita",val:dados.visitas.length,cor:"#06b6d4"},
-          {label:"Propostas",val:dados.propostas.length,cor:"#8b5cf6"},
-          {label:"Fechamentos",val:dados.fechados.length,cor:"#10b981"},
-        ].map(s=>(
+        {[{label:"Leads hoje",val:dados.criados.length,cor:"#fbbf24"},{label:"Contatos",val:dados.contatados.length,cor:"#3b82f6"},{label:"Em visita",val:dados.visitas.length,cor:"#06b6d4"},{label:"Propostas",val:dados.propostas.length,cor:"#a855f7"},{label:"Fechamentos",val:dados.fechados.length,cor:"#10b981"}].map(s=>(
           <div key={s.label} className="card" style={{padding:"14px 16px",position:"relative",overflow:"hidden"}}>
             <div style={{fontSize:26,fontWeight:800,color:s.cor}}>{s.val}</div>
-            <div style={{fontSize:11,color:"#3d5270",fontWeight:600}}>{s.label}</div>
-            <div style={{position:"absolute",right:-6,top:-6,width:50,height:50,borderRadius:"50%",background:`${s.cor}15`}}/>
+            <div style={{fontSize:11,color:"#6b5a8e",fontWeight:600}}>{s.label}</div>
+            <div style={{position:"absolute",right:-6,top:-6,width:50,height:50,borderRadius:"50%",background:`${s.cor}18`}}/>
           </div>
         ))}
       </div>
-
-      {/* NOVOS LEADS */}
-      {dados.criados.length>0&&(
-        <div className="rel-bloco" style={{marginBottom:12}}>
-          <div className="lbl">Novos leads cadastrados hoje</div>
-          {dados.criados.map(l=>(
-            <div key={l.id} style={{fontSize:13,color:"#94a3b8",padding:"4px 0",borderBottom:"1px solid #1a2840"}}>
-              {l.name}{l.company?` · ${l.company}`:""}{l.city?` · ${l.city}`:""}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* CAMPOS SUBJETIVOS */}
-      <div className="rel-bloco" style={{marginBottom:10}}>
-        <div className="lbl">🔥 Lead quente do dia</div>
-        <input className="campo" placeholder="Ex: Marcone Armazém Purim" value={leadQuente}
-          onChange={e=>{ setLeadQuente(e.target.value); salvarRascunho(e.target.value,objecao,amanha); }} style={{marginTop:8}}/>
-      </div>
-      <div className="rel-bloco" style={{marginBottom:10}}>
-        <div className="lbl">⚠️ Principal objeção</div>
-        <input className="campo" placeholder="Ex: Financiamento, falta de dinheiro..." value={objecao}
-          onChange={e=>{ setObjecao(e.target.value); salvarRascunho(leadQuente,e.target.value,amanha); }} style={{marginTop:8}}/>
-      </div>
-      <div className="rel-bloco" style={{marginBottom:16}}>
-        <div className="lbl">📋 Plano de amanhã</div>
-        <textarea className="campo" rows={2} placeholder="Quem visitar, ligar ou dar continuidade..." value={amanha}
-          onChange={e=>{ setAmanha(e.target.value); salvarRascunho(leadQuente,objecao,e.target.value); }} style={{marginTop:8,resize:"none"}}/>
-      </div>
-
-      {/* PREVIEW */}
-      <div className="secao">Pré-visualização</div>
-      <div style={{background:"#060c1a",border:"1px solid #1a2840",borderRadius:12,padding:16,marginBottom:16,fontFamily:"monospace",fontSize:12,color:"#94a3b8",lineHeight:1.8,whiteSpace:"pre-wrap",wordBreak:"break-word"}}>
-        {gerarTexto()}
-      </div>
-
+      {dados.criados.length>0&&(<div className="rel-bloco" style={{marginBottom:12}}><div className="lbl">Novos leads hoje</div>{dados.criados.map(l=>(<div key={l.id} style={{fontSize:13,color:"#94a3b8",padding:"4px 0",borderBottom:"1px solid #2d1b69"}}>{l.name}{l.city?` · ${l.city}`:""}</div>))}</div>)}
+      <div className="rel-bloco" style={{marginBottom:10}}><div className="lbl">🔥 Lead quente</div><input className="campo" placeholder="Ex: Marcone Armazém Purim" value={leadQuente} onChange={e=>{setLeadQuente(e.target.value);salvar(e.target.value,objecao,amanha);}} style={{marginTop:8}}/></div>
+      <div className="rel-bloco" style={{marginBottom:10}}><div className="lbl">⚠️ Principal objeção</div><input className="campo" placeholder="Ex: Financiamento..." value={objecao} onChange={e=>{setObjecao(e.target.value);salvar(leadQuente,e.target.value,amanha);}} style={{marginTop:8}}/></div>
+      <div className="rel-bloco" style={{marginBottom:16}}><div className="lbl">📋 Plano de amanhã</div><textarea className="campo" rows={2} placeholder="Quem visitar, ligar..." value={amanha} onChange={e=>{setAmanha(e.target.value);salvar(leadQuente,objecao,e.target.value);}} style={{marginTop:8,resize:"none"}}/></div>
+      <div style={{background:"#080412",border:"1px solid #2d1b69",borderRadius:12,padding:16,marginBottom:16,fontFamily:"monospace",fontSize:12,color:"#94a3b8",lineHeight:1.8,whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{gerarTexto()}</div>
       <div style={{display:"flex",gap:10}}>
-        <button className="btn" onClick={copiar} style={{flex:1,background:copiado?"linear-gradient(135deg,#10b981,#059669)":"#1a2840",color:copiado?"#fff":"#94a3b8",borderRadius:12,padding:14,fontWeight:700,fontSize:14,transition:"all .3s"}}>
-          {copiado?"✅ Copiado!":"📋 Copiar"}
-        </button>
-        <button className="btn" onClick={()=>window.open(`https://wa.me/?text=${encodeURIComponent(gerarTexto())}`,"_blank")} style={{flex:1,background:"linear-gradient(135deg,#25d366,#128c7e)",color:"#fff",borderRadius:12,padding:14,fontWeight:700,fontSize:14}}>
-          💬 WhatsApp
-        </button>
+        <button className="btn" onClick={copiar} style={{flex:1,background:copiado?"linear-gradient(135deg,#10b981,#059669)":"#1a0f38",color:copiado?"#fff":"#94a3b8",borderRadius:12,padding:14,fontWeight:700,fontSize:14,transition:"all .3s"}}>{copiado?"✅ Copiado!":"📋 Copiar"}</button>
+        <button className="btn" onClick={()=>window.open(`https://wa.me/?text=${encodeURIComponent(gerarTexto())}`,"_blank")} style={{flex:1,background:"linear-gradient(135deg,#25d366,#128c7e)",color:"#fff",borderRadius:12,padding:14,fontWeight:700,fontSize:14}}>💬 WhatsApp</button>
       </div>
     </div>
   );
 }
 
-/* ════════════════════════════════
-   CAMPOS AVANÇADOS RECOLHÍVEIS
-════════════════════════════════ */
-function CamposAvancados({ form, setForm }){
-  const { useState } = React;
-  const [aberto, setAberto] = useState(false);
+/* ════ TELA LOGIN ════ */
+function TelaLogin({ onLogin }){
+  const [email,setEmail]=useState("");
+  const [senha,setSenha]=useState("");
+  const [carregando,setCarregando]=useState(false);
+  const [erro,setErro]=useState("");
+  const [mostrar,setMostrar]=useState(false);
 
-  const isEmpresa = !!(form.company && form.company.trim());
-  const PRECO = isEmpresa ? 3200 : 3500;
-  const TIPO = isEmpresa ? "Empresarial" : "Residencial";
-
-  function handleValor(v){
-    setForm(f=>{
-      const val = parseFloat(v.replace(/\D/g,""));
-      const kwp = val && PRECO ? (val/PRECO).toFixed(2) : "";
-      return {...f, value:v, kwp:kwp||f.kwp};
-    });
-  }
-
-  function handleKwp(v){
-    setForm(f=>{
-      const kwp = parseFloat(v);
-      const val = kwp && PRECO ? Math.round(kwp*PRECO) : "";
-      return {...f, kwp:v, value:val?String(val):f.value};
-    });
+  async function entrar(){
+    if(!email||!senha){setErro("Preencha email e senha.");return;}
+    setCarregando(true);setErro("");
+    const {data,error}=await sb.from("users").select("*").eq("email",email.toLowerCase().trim()).eq("password",senha).single();
+    if(error||!data){setErro("Email ou senha incorretos.");setCarregando(false);return;}
+    // Salva por 30 dias
+    const expiry=Date.now()+(30*24*60*60*1000);
+    localStorage.setItem("inn_user",JSON.stringify({...data,expiry}));
+    onLogin(data);
+    setCarregando(false);
   }
 
   return(
-    <div>
-      <div style={{display:"flex",justifyContent:"flex-end"}}>
-        <button className="btn" onClick={()=>setAberto(!aberto)}
-          style={{width:40,height:40,borderRadius:"50%",background:aberto?"rgba(249,115,22,.25)":"rgba(249,115,22,.1)",color:"#f97316",border:"1px solid rgba(249,115,22,.3)",fontSize:22,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          {aberto?"−":"+"}
-        </button>
-      </div>
-
-      {aberto&&(
-        <div style={{display:"grid",gap:10,marginTop:8,padding:14,background:"#060c1a",borderRadius:12,border:"1px solid #1a2840"}}>
-
-          <input className="campo" placeholder="TEL SECUNDÁRIO" value={form.phone2||""} onChange={e=>setForm(f=>({...f,phone2:e.target.value}))}/>
-          <input className="campo" placeholder="MAIL" type="email" value={form.email||""} onChange={e=>setForm(f=>({...f,email:e.target.value}))}/>
-
-          {/* Indicador de tipo e preço */}
-          <div style={{background:"rgba(249,115,22,.08)",border:"1px solid rgba(249,115,22,.2)",borderRadius:8,padding:"6px 12px",fontSize:12,color:"#f97316",fontWeight:600}}>
-            {TIPO} · R$ {PRECO.toLocaleString("pt-BR")}/kWp — digite valor OU kWp, o outro calcula automaticamente
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24,background:"#0a0612"}}>
+      <style>{CSS}</style>
+      <div style={{width:"100%",maxWidth:380}}>
+        <div style={{textAlign:"center",marginBottom:40}}>
+          <div style={{width:80,height:80,borderRadius:22,background:"linear-gradient(135deg,#7c3aed,#6d28d9)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",boxShadow:"0 8px 32px rgba(124,58,237,.5)"}}>
+            <span style={{fontSize:36,fontWeight:800,color:"#fbbf24",fontFamily:"Sora,sans-serif"}}>I</span>
           </div>
-
-          {/* VALOR + kWp calculados automaticamente */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-            <div>
-              <div style={{fontSize:10,color:"#3d5270",marginBottom:4,textTransform:"uppercase",fontWeight:700}}>Valor Estimado (R$)</div>
-              <input className="campo" placeholder="Ex: 15000" value={form.value||""} onChange={e=>handleValor(e.target.value)}/>
-            </div>
-            <div>
-              <div style={{fontSize:10,color:"#3d5270",marginBottom:4,textTransform:"uppercase",fontWeight:700}}>Potência (kWp)</div>
-              <input className="campo" placeholder="Ex: 4.29" value={form.kwp||""} onChange={e=>handleKwp(e.target.value)}/>
-            </div>
-          </div>
-
-          {/* CONCESSIONÁRIA */}
-          <input className="campo" placeholder="CONCESSIONÁRIA" value={form.concessionaria||"Equatorial"} onChange={e=>setForm(f=>({...f,concessionaria:e.target.value}))}/>
-
-          {/* PROBABILIDADE */}
-          <input className="campo" placeholder="PROBABILIDADE" value={form.probability||""} onChange={e=>setForm(f=>({...f,probability:e.target.value}))}/>
-
+          <div style={{fontWeight:800,fontSize:38,letterSpacing:"-0.04em",color:"#fff"}}>INN</div>
+          <div style={{fontSize:13,color:"#6b5a8e",fontWeight:500,marginTop:4}}>CRM · Innovatis Energia</div>
         </div>
-      )}
+        <div className="card" style={{padding:28}}>
+          <div style={{marginBottom:16}}>
+            <div className="lbl">Email</div>
+            <input className="campo" type="email" placeholder="seu@email.com" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&entrar()}/>
+          </div>
+          <div style={{marginBottom:20}}>
+            <div className="lbl">Senha</div>
+            <div style={{position:"relative"}}>
+              <input className="campo" type={mostrar?"text":"password"} placeholder="••••••••" value={senha} onChange={e=>setSenha(e.target.value)} onKeyDown={e=>e.key==="Enter"&&entrar()}/>
+              <button className="btn" onClick={()=>setMostrar(!mostrar)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",color:"#6b5a8e",fontSize:18,padding:4}}>{mostrar?"🙈":"👁️"}</button>
+            </div>
+          </div>
+          {erro&&<div style={{background:"rgba(239,68,68,.1)",color:"#fca5a5",borderRadius:10,padding:"10px 14px",fontSize:13,marginBottom:16,textAlign:"center"}}>{erro}</div>}
+          <button className="btn" onClick={entrar} disabled={carregando} style={{width:"100%",background:"linear-gradient(135deg,#7c3aed,#6d28d9)",color:"#fbbf24",borderRadius:12,padding:14,fontWeight:800,fontSize:16,boxShadow:"0 4px 20px rgba(124,58,237,.4)",opacity:carregando?.7:1}}>
+            {carregando?"Entrando...":"Entrar"}
+          </button>
+        </div>
+        <div style={{textAlign:"center",marginTop:20,fontSize:11,color:"#2d1b69"}}>INN - CRM © {new Date().getFullYear()}</div>
+      </div>
     </div>
   );
 }
 
-/* ════════════════════════════════
-   APP PRINCIPAL
-════════════════════════════════ */
+/* ════ APP PRINCIPAL ════ */
 function AppPrincipal({ usuario, onLogout }){
   const isAdmin = usuario.roles?.includes("admin");
   const isFinanceiro = usuario.roles?.includes("financeiro");
-  const isConsultor = usuario.roles?.includes("consultant");
 
-  const [leads, setLeads] = useState([]);
-  const [relatorio, setRelatorio] = useState(REL_VAZIO);
-  const [aba, setAba] = useState(isFinanceiro ? "financeiro" : "dashboard");
-  const [modal, setModal] = useState(null);
-  const [sel, setSel] = useState(null);
-  const [form, setForm] = useState(FORM_VAZIO);
-  const [busca, setBusca] = useState("");
-  const [filtroStatus, setFiltroStatus] = useState("todos");
-  const [ouvindo, setOuvindo] = useState(false);
-  const [voiceTexto, setVoiceTexto] = useState("");
-  const [voiceParsed, setVoiceParsed] = useState(null);
-  const [voiceLoad, setVoiceLoad] = useState(false);
-  const [toast, setToast] = useState(null);
-  const [relCopiado, setRelCopiado] = useState(false);
-  const [carregando, setCarregando] = useState(true);
-  const [totalBanco, setTotalBanco] = useState(0);
-  const [pagina, setPagina] = useState(0);
-  const [sincStatus, setSincStatus] = useState("ok");
-  const [stats, setStats] = useState({});
-  const recogRef = useRef(null);
-  const POR_PAGINA = 50;
+  const [leads,setLeads]=useState([]);
+  const [aba,setAba]=useState("dashboard");
+  const [modal,setModal]=useState(null);
+  const [sel,setSel]=useState(null);
+  const [form,setForm]=useState(FORM_VAZIO);
+  const [busca,setBusca]=useState("");
+  const [filtroStatus,setFiltroStatus]=useState("todos");
+  const [ouvindo,setOuvindo]=useState(false);
+  const [voiceTexto,setVoiceTexto]=useState("");
+  const [voiceParsed,setVoiceParsed]=useState(null);
+  const [voiceLoad,setVoiceLoad]=useState(false);
+  const [toast,setToast]=useState(null);
+  const [carregando,setCarregando]=useState(true);
+  const [totalBanco,setTotalBanco]=useState(0);
+  const [pagina,setPagina]=useState(0);
+  const [sincStatus,setSincStatus]=useState("ok");
+  const [stats,setStats]=useState({});
+  // Busca anti-duplicata
+  const [buscaNovo,setBuscaNovo]=useState("");
+  const [resultadosBusca,setResultadosBusca]=useState([]);
+  const [buscando,setBuscando]=useState(false);
+  const recogRef=useRef(null);
+  const buscaTimer=useRef(null);
+  const POR_PAGINA=50;
 
-  const carregarLeads = useCallback(async (pag=0, filtro="todos", termo="") => {
+  const carregarLeads=useCallback(async(pag=0,filtro="todos",termo="")=>{
     setCarregando(true);
-    let query = sb.from("leads").select("*", {count:"exact"});
-    // Financeiro vê só propostas
-    if(isFinanceiro && !isAdmin){
-      query = query.eq("status", "proposal");
-    } else {
-      // Consultor vê seus leads OU leads sem dono
-      if(isConsultor && !isAdmin){
-        query = query.or(`owner.eq.${usuario.name},owner.is.null`);
-      }
-      if(filtro !== "todos") query = query.eq("status", filtro);
+    let q=sb.from("leads").select("*",{count:"exact"});
+    if(isFinanceiro&&!isAdmin) q=q.eq("status","proposal");
+    else {
+      if(!isAdmin) q=q.or(`owner.eq.${usuario.name},owner.is.null`);
+      if(filtro!=="todos") q=q.eq("status",filtro);
     }
-    if(termo.trim()) query = query.or(`name.ilike.%${termo}%,phone1.ilike.%${termo}%,company.ilike.%${termo}%,city.ilike.%${termo}%`);
-    query = query.order("created_at",{ascending:false}).range(pag*POR_PAGINA,(pag+1)*POR_PAGINA-1);
-    const {data,error,count} = await query;
-    if(error){ aviso("Erro ao carregar: "+error.message,"erro"); setCarregando(false); return; }
-    setLeads(data||[]);
-    setTotalBanco(count||0);
+    if(termo.trim()) q=q.or(`name.ilike.%${termo}%,phone1.ilike.%${termo}%,company.ilike.%${termo}%,city.ilike.%${termo}%`);
+    q=q.order("created_at",{ascending:false}).range(pag*POR_PAGINA,(pag+1)*POR_PAGINA-1);
+    const {data,error,count}=await q;
+    if(error){aviso("Erro ao carregar: "+error.message,"erro");}
+    else{setLeads(data||[]);setTotalBanco(count||0);}
     setCarregando(false);
   },[usuario]);
 
-  const carregarStats = useCallback(async () => {
-    let query = sb.from("leads").select("status");
-    if(isConsultor && !isAdmin) query = query.or(`owner.eq.${usuario.name},owner.is.null`);
-    const {data} = await query;
+  const carregarStats=useCallback(async()=>{
+    let q=sb.from("leads").select("status");
+    if(!isAdmin) q=q.or(`owner.eq.${usuario.name},owner.is.null`);
+    const {data}=await q;
     if(!data)return;
-    const s={};
-    STATUS_KEYS.forEach(k=>s[k]=0);
-    data.forEach(l=>{ if(s[l.status]!==undefined) s[l.status]++; });
+    const s={};STATUS_KEYS.forEach(k=>s[k]=0);
+    data.forEach(l=>{if(s[l.status]!==undefined)s[l.status]++;});
     setStats(s);
   },[usuario]);
 
-  useEffect(()=>{
-    carregarLeads(0,"todos","");
-    carregarStats();
-    try{ const r=localStorage.getItem("inn_rel_"+hoje); if(r) setRelatorio(JSON.parse(r)); }catch{}
-  },[]);
-
+  useEffect(()=>{carregarLeads(0,"todos","");carregarStats();},[]);
   useEffect(()=>{if(toast){const t=setTimeout(()=>setToast(null),3500);return()=>clearTimeout(t);}},[toast]);
+
   const aviso=(msg,tipo="ok")=>setToast({msg,tipo});
 
-  const buscaTimer=useRef(null);
-  function handleBusca(v){ setBusca(v); clearTimeout(buscaTimer.current); buscaTimer.current=setTimeout(()=>{ setPagina(0); carregarLeads(0,filtroStatus,v); },500); }
-  function handleFiltro(v){ setFiltroStatus(v); setPagina(0); carregarLeads(0,v,busca); }
-  function irPagina(p){ setPagina(p); carregarLeads(p,filtroStatus,busca); }
+  function handleBusca(v){
+    setBusca(v);
+    clearTimeout(buscaTimer.current);
+    buscaTimer.current=setTimeout(()=>{setPagina(0);carregarLeads(0,filtroStatus,v);},600);
+  }
+  function handleFiltro(v){setFiltroStatus(v);setPagina(0);carregarLeads(0,v,busca);}
+  function irPagina(p){setPagina(p);carregarLeads(p,filtroStatus,busca);}
 
-  function abrirAdicionar(){ setForm({...FORM_VAZIO, owner: usuario.name}); setModal("add"); }
-  function abrirEditar(l){ setSel(l); setForm({...l}); setModal("edit"); }
-  function abrirVer(l){ setSel(l); setModal("view"); }
-  function fecharModal(){ setModal(null); setSel(null); }
+  // BUSCA ANTI-DUPLICATA
+  async function buscarDuplicata(termo){
+    if(!termo||termo.length<2){setResultadosBusca([]);return;}
+    setBuscando(true);
+    const {data}=await sb.from("leads").select("id,name,phone1,city,status,company")
+      .or(`name.ilike.%${termo}%,phone1.ilike.%${termo}%`)
+      .limit(5);
+    setResultadosBusca(data||[]);
+    setBuscando(false);
+  }
+
+  function abrirNovo(){
+    setBuscaNovo("");setResultadosBusca([]);
+    setForm({...FORM_VAZIO,owner:usuario.name});
+    setModal("busca");
+  }
+  function abrirEditar(l){setSel(l);setForm({...l});setModal("edit");}
+  function abrirVer(l){setSel(l);setModal("view");}
+  function fecharModal(){setModal(null);setSel(null);}
+
+  function selecionarExistente(l){
+    setSel(l);setForm({...l});setModal("edit");setResultadosBusca([]);
+    aviso("Cliente já existe! Editando...");
+  }
+
+  function confirmarNovo(){
+    setModal("add");setResultadosBusca([]);
+  }
 
   async function salvarLead(){
-    if(!form.name?.trim()){ aviso("Nome obrigatório!","erro"); return; }
+    if(!form.name?.trim()){aviso("Nome obrigatório!","erro");return;}
     setSincStatus("sincronizando");
+    const tipo=form.type||"Residencial";
     const payload={
-      name:form.name, company:form.company||null, phone1:form.phone1||null, phone2:form.phone2||null,
-      email:form.email||null, status:form.status||"prospect", city:form.city||null, state:form.state||"GO",
+      name:form.name,company:form.company||null,phone1:form.phone1||null,
+      phone2:form.phone2||null,email:form.email||null,
+      status:form.status||"sondar",city:form.city||null,state:form.state||"GO",
       value:form.value?parseFloat(String(form.value).replace(/[^\d.]/g,"")):null,
-      kwp:form.kwp?parseFloat(form.kwp):null, history:form.history||null,
-      probability:form.probability||null, owner:form.owner||usuario.name,
-      visit_or_call:form.visit_or_call||"0", budget:!!form.budget, proposal:!!form.proposal,
-      delivered:!!form.delivered, closed:!!form.closed, post_sales:!!form.post_sales,
+      kwp:form.kwp?parseFloat(form.kwp):null,history:form.history||null,
+      probability:form.probability||null,owner:form.owner||usuario.name,
+      visit_or_call:form.visit_or_call||"0",budget:!!form.budget,
+      proposal:!!form.proposal,delivered:!!form.delivered,
+      closed:!!form.closed,post_sales:!!form.post_sales,
       concessionaria:form.concessionaria||"Equatorial",
+      type:tipo,
     };
     let error;
-    if(modal==="add"){ ({error}=await sb.from("leads").insert(payload)); if(!error) aviso("Lead adicionado! ✅"); }
-    else { ({error}=await sb.from("leads").update(payload).eq("id",sel.id)); if(!error) aviso("Lead atualizado! ✅"); }
-    if(error) aviso("Erro: "+error.message,"erro");
+    if(modal==="add"){({error}=await sb.from("leads").insert(payload));if(!error)aviso("Lead adicionado! ✅");}
+    else{({error}=await sb.from("leads").update(payload).eq("id",sel.id));if(!error)aviso("Lead atualizado! ✅");}
+    if(error)aviso("Erro: "+error.message,"erro");
     await carregarLeads(pagina,filtroStatus,busca);
     await carregarStats();
     setSincStatus("ok");
@@ -495,7 +402,8 @@ function AppPrincipal({ usuario, onLogout }){
     if(!confirm("Excluir este lead?"))return;
     setSincStatus("sincronizando");
     const {error}=await sb.from("leads").delete().eq("id",id);
-    if(error) aviso("Erro: "+error.message,"erro"); else aviso("Lead removido.","erro");
+    if(error)aviso("Erro: "+error.message,"erro");
+    else aviso("Lead removido.","erro");
     await carregarLeads(pagina,filtroStatus,busca);
     await carregarStats();
     setSincStatus("ok");
@@ -503,35 +411,26 @@ function AppPrincipal({ usuario, onLogout }){
   }
 
   async function registrarContato(id){
-    const l=leads.find(x=>x.id===id); if(!l)return;
+    const l=leads.find(x=>x.id===id);if(!l)return;
     const novas=parseInt(l.visit_or_call||"0")+1;
     setSincStatus("sincronizando");
     await sb.from("leads").update({visit_or_call:String(novas)}).eq("id",id);
     await carregarLeads(pagina,filtroStatus,busca);
     setSincStatus("ok");
     aviso("Contato registrado! 📞");
-    if(sel?.id===id) setSel(prev=>({...prev,visit_or_call:String(novas)}));
-  }
-
-  async function aprovarProposta(id){
-    setSincStatus("sincronizando");
-    await sb.from("leads").update({status:"contract", proposal:true}).eq("id",id);
-    aviso("Proposta aprovada! ✅");
-    await carregarLeads(pagina,filtroStatus,busca);
-    setSincStatus("ok");
-    fecharModal();
+    if(sel?.id===id)setSel(prev=>({...prev,visit_or_call:String(novas)}));
   }
 
   function abrirWhatsApp(l){
-    const num=l.phone1||l.phone2; if(!num){ aviso("Sem telefone.","erro"); return; }
+    const num=l.phone1||l.phone2;if(!num){aviso("Sem telefone.","erro");return;}
     const msg=encodeURIComponent(`Olá ${(l.name||"").split(" ")[0]}, tudo bem? Sou da Innovatis Energia Solar e gostaria de conversar sobre como podemos reduzir sua conta de luz. 😊☀️`);
     window.open(`https://wa.me/${limpaNum(num)}?text=${msg}`,"_blank");
     registrarContato(l.id);
   }
 
   function exportarCSV(){
-    const cab=["Nome","Empresa","Telefone","Status","Cidade","Valor","kWp","Responsável"];
-    const lin=leads.map(l=>[l.name,l.company,l.phone1,l.status,l.city,l.value,l.kwp,l.owner].map(v=>`"${v||""}"`).join(","));
+    const cab=["Nome","Tipo","Empresa","Telefone","Status","Cidade","Valor","kWp","Responsável"];
+    const lin=leads.map(l=>[l.name,l.type,l.company,l.phone1,l.status,l.city,l.value,l.kwp,l.owner].map(v=>`"${v||""}"`).join(","));
     const csv=[cab.join(","),...lin].join("\n");
     const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
     const url=URL.createObjectURL(blob);
@@ -539,17 +438,17 @@ function AppPrincipal({ usuario, onLogout }){
     aviso("Exportado!");
   }
 
-  /* VOZ */
+  // VOZ
   function iniciarVoz(){
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-    if(!SR){ aviso("Voz não suportada neste navegador.","erro"); return; }
-    const r=new SR(); r.lang="pt-BR"; r.continuous=false; r.interimResults=false;
-    r.onresult=e=>{ const t=e.results[0][0].transcript; setVoiceTexto(t); interpretarVoz(t); };
-    r.onerror=()=>{ setOuvindo(false); aviso("Erro ao capturar voz.","erro"); };
+    if(!SR){aviso("Voz não suportada.","erro");return;}
+    const r=new SR();r.lang="pt-BR";r.continuous=false;r.interimResults=false;
+    r.onresult=e=>{const t=e.results[0][0].transcript;setVoiceTexto(t);interpretarVoz(t);};
+    r.onerror=()=>{setOuvindo(false);aviso("Erro ao capturar voz.","erro");};
     r.onend=()=>setOuvindo(false);
-    recogRef.current=r; r.start(); setOuvindo(true); setVoiceTexto(""); setVoiceParsed(null);
+    recogRef.current=r;r.start();setOuvindo(true);setVoiceTexto("");setVoiceParsed(null);
   }
-  function pararVoz(){ if(recogRef.current) recogRef.current.stop(); setOuvindo(false); }
+  function pararVoz(){if(recogRef.current)recogRef.current.stop();setOuvindo(false);}
 
   async function interpretarVoz(texto){
     setVoiceLoad(true);
@@ -558,150 +457,99 @@ function AppPrincipal({ usuario, onLogout }){
         method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
           model:"claude-sonnet-4-20250514",max_tokens:600,
-          system:`Você extrai dados de leads de energia solar de texto falado por um vendedor. Retorne SOMENTE JSON com: name, company, phone1, city, state (UF 2 letras), status (prospect/lead/proposal/contract/client), value (número sem R$), kwp (número), history (observações). Sem texto extra, sem markdown.`,
+          system:`Extraia dados de leads de energia solar. Retorne SOMENTE JSON: name, company, phone1, city, state (UF), status (sondar/lead/agendar/visitar/prospect/proposal/contract/client), value (número), kwp (número), history. Sem markdown.`,
           messages:[{role:"user",content:texto}]
         })
       });
       const d=await res.json();
       const raw=d.content?.[0]?.text||"{}";
       const parsed=JSON.parse(raw.replace(/```json|```/g,"").trim());
-      setVoiceParsed({...FORM_VAZIO,...parsed,owner:usuario.name});
-    }catch{ aviso("Não consegui interpretar. Tente novamente.","erro"); }
+      setVoiceParsed({...FORM_VAZIO,...parsed,owner:usuario.name,state:parsed.state||"GO"});
+    }catch{aviso("Não consegui interpretar.","erro");}
     setVoiceLoad(false);
   }
 
   async function confirmarVoz(){
-    if(!voiceParsed?.name){ aviso("Nome não identificado.","erro"); return; }
+    if(!voiceParsed?.name){aviso("Nome não identificado.","erro");return;}
     setSincStatus("sincronizando");
-    const payload={
-      name:voiceParsed.name, company:voiceParsed.company||null, phone1:voiceParsed.phone1||null,
-      city:voiceParsed.city||null, state:voiceParsed.state||"GO",
-      status:voiceParsed.status||"prospect",
+    const {error}=await sb.from("leads").insert({
+      name:voiceParsed.name,company:voiceParsed.company||null,
+      phone1:voiceParsed.phone1||null,city:voiceParsed.city||null,
+      state:voiceParsed.state||"GO",status:voiceParsed.status||"sondar",
       value:voiceParsed.value?parseFloat(voiceParsed.value):null,
       kwp:voiceParsed.kwp?parseFloat(voiceParsed.kwp):null,
-      history:voiceParsed.history||null, owner:usuario.name,
+      history:voiceParsed.history||null,owner:usuario.name,
       concessionaria:"Equatorial",
-    };
-    const {error}=await sb.from("leads").insert(payload);
-    if(error) aviso("Erro: "+error.message,"erro"); else aviso("Lead salvo! ✅");
+    });
+    if(error)aviso("Erro: "+error.message,"erro");
+    else aviso("Lead salvo! ✅");
     await carregarLeads(0,filtroStatus,busca);
     await carregarStats();
     setSincStatus("ok");
-    setVoiceParsed(null); setVoiceTexto("");
+    setVoiceParsed(null);setVoiceTexto("");
   }
-
-  /* RELATÓRIO */
-  function setRel(c,v){ setRelatorio(prev=>{ const n={...prev,[c]:v}; try{localStorage.setItem("inn_rel_"+hoje,JSON.stringify(n));}catch{} return n; }); }
-  function addFechamento(){ setRelatorio(p=>({...p,fechamentos_esperados:[...p.fechamentos_esperados,{nome:"",valor:""}]})); }
-  function setFechamento(i,c,v){ setRelatorio(p=>{ const a=[...p.fechamentos_esperados]; a[i]={...a[i],[c]:v}; return{...p,fechamentos_esperados:a}; }); }
-  function remFechamento(i){ setRelatorio(p=>({...p,fechamentos_esperados:p.fechamentos_esperados.filter((_,idx)=>idx!==i)})); }
-  function addNaoFechou(){ setRelatorio(p=>({...p,nao_fecharam:[...p.nao_fecharam,{nome:"",motivo:""}]})); }
-  function setNaoFechou(i,c,v){ setRelatorio(p=>{ const a=[...p.nao_fecharam]; a[i]={...a[i],[c]:v}; return{...p,nao_fecharam:a}; }); }
-  function remNaoFechou(i){ setRelatorio(p=>({...p,nao_fecharam:p.nao_fecharam.filter((_,idx)=>idx!==i)})); }
-
-  function gerarTextoRelatorio(){
-    const r=relatorio;
-    const d=new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"});
-    let txt=`☀️ *RELATÓRIO DIÁRIO INN*\n👤 ${usuario.name}\n📅 ${d}\n${"─".repeat(30)}\n\n`;
-    txt+=`*1️⃣ Clientes contatados hoje: ${r.total_hoje}*\n`;
-    if(r.telefone>0)txt+=`   📞 Telefone: ${r.telefone}\n`;
-    if(r.escritorio>0)txt+=`   🏢 Escritório: ${r.escritorio}\n`;
-    if(r.visitas>0)txt+=`   🚗 Visitas: ${r.visitas}\n`;
-    txt+=`\n*2️⃣ Lead quente trabalhado hoje:*\n   🔥 ${r.lead_quente||"—"}\n`;
-    txt+=`\n*3️⃣ Principal objeção:*\n   ⚠️ ${r.objecao||"—"}\n`;
-    if(r.fechamentos_esperados.filter(f=>f.nome).length>0){
-      txt+=`\n*4️⃣ Vendas que fecham essa semana:*\n`;
-      r.fechamentos_esperados.filter(f=>f.nome).forEach(f=>{ txt+=`   💰 ${f.nome}`; if(f.valor)txt+=` — ${fmtValor(f.valor)}`; txt+="\n"; });
-    }
-    if(r.nao_fecharam.filter(n=>n.nome).length>0){
-      txt+=`\n*5️⃣ Clientes que ainda não fecharam:*\n`;
-      r.nao_fecharam.filter(n=>n.nome).forEach(n=>{ txt+=`   ❌ ${n.nome}`; if(n.motivo)txt+=`\n      📌 Motivo: ${n.motivo}`; txt+="\n"; });
-    }
-    if(r.amanha)txt+=`\n*6️⃣ Plano de amanhã:*\n   📋 ${r.amanha}\n`;
-    txt+=`\n${"─".repeat(30)}\n_Enviado via INN CRM Solar_`;
-    return txt;
-  }
-
-  function copiarRelatorio(){ navigator.clipboard.writeText(gerarTextoRelatorio()).then(()=>{ setRelCopiado(true); aviso("Copiado! Cole no WhatsApp."); setTimeout(()=>setRelCopiado(false),3000); }).catch(()=>aviso("Erro ao copiar.","erro")); }
-  function enviarRelWhatsApp(){ window.open(`https://wa.me/?text=${encodeURIComponent(gerarTextoRelatorio())}`,"_blank"); }
 
   const totalPaginas=Math.ceil(totalBanco/POR_PAGINA);
 
-  /* ABAS disponíveis por perfil */
-  const abas = [
-    ...(!isFinanceiro ? [["dashboard","📊 Painel"],["list","👥 Leads"],["relatorio","📋 Relatório"],["voice","🎙️ Voz"]] : []),
-    ...(isFinanceiro ? [["financeiro","💰 Propostas"]] : []),
-  ];
-
-  if(carregando && leads.length===0) return(
-    <div style={{fontFamily:"'Sora','Segoe UI',sans-serif",background:"#080d1a",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:"#e8eaf6"}}>
+  if(carregando&&leads.length===0)return(
+    <div style={{fontFamily:"'Sora','Segoe UI',sans-serif",background:"#0a0612",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:"#e8eaf6"}}>
       <style>{CSS}</style>
-      <div style={{width:64,height:64,borderRadius:18,background:"linear-gradient(135deg,#f97316,#fb923c)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20,boxShadow:"0 8px 32px rgba(249,115,22,.4)"}}>
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5">
-          <circle cx="12" cy="12" r="4"/>
-          <line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/>
-          <line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/>
-          <line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/>
-          <line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/>
-        </svg>
+      <div style={{width:64,height:64,borderRadius:18,background:"linear-gradient(135deg,#7c3aed,#6d28d9)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20,boxShadow:"0 8px 32px rgba(124,58,237,.5)"}}>
+        <span style={{fontSize:28,fontWeight:800,color:"#fbbf24"}}>I</span>
       </div>
       <div style={{fontWeight:800,fontSize:32,letterSpacing:"-0.04em",marginBottom:8}}>INN</div>
-      <div style={{color:"#3d5270",fontSize:14}}>Carregando... <span className="spin">⏳</span></div>
+      <div style={{color:"#6b5a8e",fontSize:14}}>Carregando... <span className="spin">⏳</span></div>
     </div>
   );
 
   return(
-    <div style={{fontFamily:"'Sora','Segoe UI',sans-serif",background:"#080d1a",minHeight:"100vh",color:"#e8eaf6"}}>
+    <div style={{fontFamily:"'Sora','Segoe UI',sans-serif",background:"#0a0612",minHeight:"100vh",color:"#e8eaf6"}}>
       <style>{CSS}</style>
 
       {/* HEADER */}
-      <div style={{background:"linear-gradient(90deg,#0a1020,#0f1a2e)",borderBottom:"1px solid #1a2840",padding:"12px 16px",display:"flex",alignItems:"center",gap:12}}>
-        <div style={{width:38,height:38,borderRadius:12,background:"linear-gradient(135deg,#f97316,#fb923c)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 16px rgba(249,115,22,.4)",flexShrink:0}}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5">
-            <circle cx="12" cy="12" r="4"/>
-            <line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/>
-            <line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/>
-            <line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/>
-            <line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/>
-          </svg>
+      <div style={{background:"linear-gradient(90deg,#0a0612,#12082a)",borderBottom:"1px solid #2d1b69",padding:"12px 16px",display:"flex",alignItems:"center",gap:12}}>
+        <div style={{width:38,height:38,borderRadius:12,background:"linear-gradient(135deg,#7c3aed,#6d28d9)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 16px rgba(124,58,237,.4)",flexShrink:0}}>
+          <span style={{fontSize:18,fontWeight:800,color:"#fbbf24"}}>I</span>
         </div>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontWeight:800,fontSize:20,letterSpacing:"-0.04em",color:"#fff",lineHeight:1}}>INN</div>
-          <div style={{fontSize:10,color:"#3d5270",fontWeight:600,marginTop:1,display:"flex",alignItems:"center"}}>
-            <span className="sync-dot" style={{background:sincStatus==="ok"?"#10b981":sincStatus==="sincronizando"?"#f97316":"#ef4444"}}/>
-            {usuario.name.split(" ")[0]}
+          <div style={{fontWeight:800,fontSize:20,letterSpacing:"-0.04em",color:"#fff",lineHeight:1}}>INN <span style={{color:"#fbbf24",fontSize:13,fontWeight:600}}>CRM</span></div>
+          <div style={{fontSize:10,color:"#6b5a8e",fontWeight:600,marginTop:1,display:"flex",alignItems:"center"}}>
+            <span className="sync-dot" style={{background:sincStatus==="ok"?"#10b981":sincStatus==="sincronizando"?"#fbbf24":"#ef4444"}}/>
+            {totalBanco} leads · {sincStatus==="ok"?"Sincronizado":sincStatus==="sincronizando"?"Salvando...":"Erro"}
           </div>
         </div>
         <div style={{display:"flex",gap:6}}>
-          {!isFinanceiro&&<button className="btn" onClick={exportarCSV} style={{background:"rgba(249,115,22,.1)",color:"#f97316",border:"1px solid rgba(249,115,22,.25)",borderRadius:10,padding:"7px 12px",fontSize:12,fontWeight:700}}>⬇ Excel</button>}
-          {!isFinanceiro&&<button className="btn" onClick={abrirAdicionar} style={{background:"linear-gradient(135deg,#f97316,#fb923c)",color:"#fff",borderRadius:10,padding:"7px 13px",fontSize:13,fontWeight:700}}>+ Novo</button>}
-          <button className="btn" onClick={onLogout} style={{background:"rgba(239,68,68,.1)",color:"#ef4444",borderRadius:10,padding:"7px 12px",fontSize:12,fontWeight:700}}>Sair</button>
+          <button className="btn" onClick={exportarCSV} style={{background:"rgba(251,191,36,.1)",color:"#fbbf24",border:"1px solid rgba(251,191,36,.25)",borderRadius:10,padding:"7px 12px",fontSize:12,fontWeight:700}}>⬇ Excel</button>
+          <button className="btn" onClick={abrirNovo} style={{background:"linear-gradient(135deg,#7c3aed,#6d28d9)",color:"#fbbf24",borderRadius:10,padding:"7px 14px",fontSize:14,fontWeight:800,boxShadow:"0 4px 14px rgba(124,58,237,.4)"}}>+</button>
+          <button className="btn" onClick={onLogout} style={{background:"rgba(239,68,68,.1)",color:"#ef4444",borderRadius:10,padding:"7px 10px",fontSize:12,fontWeight:700}}>Sair</button>
         </div>
       </div>
 
       {/* NAV */}
-      <div style={{display:"flex",gap:3,padding:"8px 12px",borderBottom:"1px solid #1a2840",overflowX:"auto"}}>
-        {abas.map(([v,l])=>(
+      <div style={{display:"flex",gap:3,padding:"8px 12px",borderBottom:"1px solid #2d1b69",overflowX:"auto"}}>
+        {[["dashboard","📊 Painel"],["list","👥 Leads"],["relatorio","📋 Relatório"],["voice","🎙️ Voz"],
+          ...(isFinanceiro?[["financeiro","💰 Propostas"]]:[])
+        ].map(([v,l])=>(
           <button key={v} className={`nav-btn${aba===v?" ativo":""}`} onClick={()=>setAba(v)}>{l}</button>
         ))}
       </div>
 
       <div style={{padding:"18px 14px",maxWidth:860,margin:"0 auto"}}>
 
-        {/* ══ PAINEL ══ */}
+        {/* PAINEL */}
         {aba==="dashboard"&&(
           <div className="fade">
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
               {STATUS_KEYS.map(k=>(
                 <div key={k} className="stat card" onClick={()=>{setAba("list");handleFiltro(k);}}>
-                  <div style={{fontSize:30,fontWeight:800,color:STATUS_MAP[k].cor,lineHeight:1}}>{stats[k]||0}</div>
-                  <div style={{fontSize:11,color:"#3d5270",fontWeight:600,marginTop:4}}>{STATUS_MAP[k].label}</div>
+                  <div style={{fontSize:28,fontWeight:800,color:STATUS_MAP[k].cor,lineHeight:1}}>{stats[k]||0}</div>
+                  <div style={{fontSize:11,color:"#6b5a8e",fontWeight:600,marginTop:4}}>{STATUS_MAP[k].label}</div>
                   <div style={{position:"absolute",right:-8,top:-8,width:60,height:60,borderRadius:"50%",background:`${STATUS_MAP[k].cor}15`}}/>
                 </div>
               ))}
               <div className="stat card" style={{gridColumn:"1/-1",background:"linear-gradient(135deg,#0f2a1a,#0a1f12)"}}>
-                <div style={{fontSize:30,fontWeight:800,color:"#10b981",lineHeight:1}}>{totalBanco}</div>
-                <div style={{fontSize:11,color:"#3d5270",fontWeight:600,marginTop:4}}>Total de Leads {isAdmin?"no Banco":"seus"}</div>
+                <div style={{fontSize:28,fontWeight:800,color:"#10b981"}}>{totalBanco}</div>
+                <div style={{fontSize:11,color:"#6b5a8e",fontWeight:600,marginTop:4}}>Total no Banco</div>
               </div>
             </div>
             <div className="secao">📈 Pipeline</div>
@@ -713,22 +561,22 @@ function AppPrincipal({ usuario, onLogout }){
                   <div key={k} style={{marginBottom:12}}>
                     <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
                       <span style={{fontSize:13,fontWeight:600}}>{STATUS_MAP[k].label}</span>
-                      <span style={{fontSize:13,color:STATUS_MAP[k].cor,fontWeight:700}}>{cnt} <span style={{color:"#3d5270",fontWeight:400,fontSize:11}}>({pct}%)</span></span>
+                      <span style={{fontSize:13,color:STATUS_MAP[k].cor,fontWeight:700}}>{cnt} <span style={{color:"#6b5a8e",fontWeight:400,fontSize:11}}>({pct}%)</span></span>
                     </div>
-                    <div style={{background:"#1a2840",borderRadius:6,height:7}}>
-                      <div style={{width:`${pct}%`,height:7,borderRadius:6,background:STATUS_MAP[k].cor,transition:"width .6s"}}/>
+                    <div style={{background:"#2d1b69",borderRadius:6,height:6}}>
+                      <div style={{width:`${pct}%`,height:6,borderRadius:6,background:STATUS_MAP[k].cor,transition:"width .6s"}}/>
                     </div>
                   </div>
                 );
               })}
             </div>
-            <div className="secao" style={{marginTop:24}}>🕐 Últimos leads</div>
+            <div className="secao" style={{marginTop:20}}>🕐 Últimos leads</div>
             {leads.slice(0,5).map(l=>(
               <div key={l.id} className="linha card" onClick={()=>abrirVer(l)}>
                 <div className="avatar" style={{background:`${statusInfo(l.status).cor}22`,color:statusInfo(l.status).cor}}>{(l.name||"?")[0].toUpperCase()}</div>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontWeight:700,fontSize:14,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{l.name}</div>
-                  <div style={{fontSize:12,color:"#3d5270"}}>{[l.company,l.city].filter(Boolean).join(" · ")||"—"}</div>
+                  <div style={{fontSize:12,color:"#6b5a8e"}}>{[l.company,l.city].filter(Boolean).join(" · ")||"—"}</div>
                 </div>
                 <span className="badge" style={{background:`${statusInfo(l.status).cor}20`,color:statusInfo(l.status).cor}}>{statusInfo(l.status).label}</span>
               </div>
@@ -736,7 +584,7 @@ function AppPrincipal({ usuario, onLogout }){
           </div>
         )}
 
-        {/* ══ LEADS ══ */}
+        {/* LEADS */}
         {aba==="list"&&(
           <div className="fade">
             <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
@@ -746,7 +594,7 @@ function AppPrincipal({ usuario, onLogout }){
                 {STATUS_KEYS.map(k=><option key={k} value={k}>{STATUS_MAP[k].label}</option>)}
               </select>
             </div>
-            <div style={{fontSize:12,color:"#3d5270",marginBottom:10,display:"flex",justifyContent:"space-between"}}>
+            <div style={{fontSize:12,color:"#6b5a8e",marginBottom:10,display:"flex",justifyContent:"space-between"}}>
               <span>{carregando?"Carregando...":`${totalBanco} leads · pág ${pagina+1}/${totalPaginas||1}`}</span>
               {carregando&&<span className="spin">⏳</span>}
             </div>
@@ -755,112 +603,77 @@ function AppPrincipal({ usuario, onLogout }){
                 <div className="avatar" style={{background:`${statusInfo(l.status).cor}22`,color:statusInfo(l.status).cor}}>{(l.name||"?")[0].toUpperCase()}</div>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontWeight:700,fontSize:14,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{l.name}</div>
-                  <div style={{fontSize:12,color:"#3d5270"}}>{[l.company,l.city,l.state].filter(Boolean).join(" · ")}</div>
+                  <div style={{fontSize:12,color:"#6b5a8e"}}>{[l.type,l.company,l.city].filter(Boolean).join(" · ")}</div>
                   {l.value&&<div style={{fontSize:11,color:"#10b981",fontWeight:700,marginTop:2}}>{fmtValor(l.value)}{l.kwp?` · ${l.kwp} kWp`:""}</div>}
-                  {isAdmin&&l.owner&&<div style={{fontSize:11,color:"#3d5270",marginTop:1}}>👤 {l.owner}</div>}
+                  {isAdmin&&l.owner&&<div style={{fontSize:11,color:"#6b5a8e",marginTop:1}}>👤 {l.owner}</div>}
                 </div>
                 <div style={{textAlign:"right",flexShrink:0}}>
                   <span className="badge" style={{background:`${statusInfo(l.status).cor}20`,color:statusInfo(l.status).cor}}>{statusInfo(l.status).label}</span>
-                  <div style={{fontSize:11,color:"#3d5270",marginTop:4}}>📞 {l.visit_or_call||0}</div>
+                  <div style={{fontSize:11,color:"#6b5a8e",marginTop:4}}>📞 {l.visit_or_call||0}</div>
                   <button className="btn" onClick={e=>{e.stopPropagation();abrirWhatsApp(l);}} style={{marginTop:5,background:"#25d366",color:"#fff",borderRadius:8,padding:"3px 10px",fontSize:11,fontWeight:700}}>💬 WA</button>
                 </div>
               </div>
             ))}
             {totalPaginas>1&&(
               <div style={{display:"flex",justifyContent:"center",gap:8,marginTop:16}}>
-                <button className="btn" onClick={()=>irPagina(Math.max(0,pagina-1))} disabled={pagina===0} style={{background:"#1a2840",color:pagina===0?"#3d5270":"#e8eaf6",borderRadius:8,padding:"6px 14px",fontWeight:600,opacity:pagina===0?.4:1}}>← Anterior</button>
-                <span style={{color:"#3d5270",fontSize:13,padding:"6px 4px"}}>{pagina+1}/{totalPaginas}</span>
-                <button className="btn" onClick={()=>irPagina(Math.min(totalPaginas-1,pagina+1))} disabled={pagina>=totalPaginas-1} style={{background:"#1a2840",color:pagina>=totalPaginas-1?"#3d5270":"#e8eaf6",borderRadius:8,padding:"6px 14px",fontWeight:600,opacity:pagina>=totalPaginas-1?.4:1}}>Próxima →</button>
+                <button className="btn" onClick={()=>irPagina(Math.max(0,pagina-1))} disabled={pagina===0} style={{background:"#1a0f38",color:pagina===0?"#6b5a8e":"#e8eaf6",borderRadius:8,padding:"6px 14px",fontWeight:600,opacity:pagina===0?.4:1}}>← Anterior</button>
+                <span style={{color:"#6b5a8e",fontSize:13,padding:"6px 4px"}}>{pagina+1}/{totalPaginas}</span>
+                <button className="btn" onClick={()=>irPagina(Math.min(totalPaginas-1,pagina+1))} disabled={pagina>=totalPaginas-1} style={{background:"#1a0f38",color:pagina>=totalPaginas-1?"#6b5a8e":"#e8eaf6",borderRadius:8,padding:"6px 14px",fontWeight:600,opacity:pagina>=totalPaginas-1?.4:1}}>Próxima →</button>
               </div>
             )}
           </div>
         )}
 
-        {/* ══ FINANCEIRO — PROPOSTAS ══ */}
+        {/* RELATÓRIO */}
+        {aba==="relatorio"&&<RelatorioInteligente usuario={usuario} sb={sb} hoje={hoje} fmtValor={fmtValor}/>}
+
+        {/* FINANCEIRO */}
         {aba==="financeiro"&&(
           <div className="fade">
-            <div style={{fontWeight:800,fontSize:18,marginBottom:4}}>💰 Propostas para Aprovação</div>
-            <div style={{fontSize:12,color:"#3d5270",marginBottom:20}}>Leads com proposta enviada aguardando aprovação.</div>
-            {leads.length===0&&<div className="card" style={{padding:20,textAlign:"center",color:"#3d5270"}}>Nenhuma proposta pendente no momento.</div>}
+            <div style={{fontWeight:800,fontSize:18,marginBottom:16}}>💰 Propostas para Aprovação</div>
             {leads.map(l=>(
               <div key={l.id} className="linha card" onClick={()=>abrirVer(l)}>
-                <div className="avatar" style={{background:"rgba(139,92,246,.2)",color:"#8b5cf6"}}>{(l.name||"?")[0].toUpperCase()}</div>
+                <div className="avatar" style={{background:"rgba(124,58,237,.2)",color:"#a78bfa"}}>{(l.name||"?")[0].toUpperCase()}</div>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontWeight:700,fontSize:14}}>{l.name}</div>
-                  <div style={{fontSize:12,color:"#3d5270"}}>{[l.company,l.city].filter(Boolean).join(" · ")}</div>
-                  {l.value&&<div style={{fontSize:13,color:"#10b981",fontWeight:700,marginTop:2}}>{fmtValor(l.value)}{l.kwp?` · ${l.kwp} kWp`:""}</div>}
-                  <div style={{fontSize:11,color:"#3d5270",marginTop:1}}>👤 {l.owner||"—"}</div>
+                  <div style={{fontSize:12,color:"#6b5a8e"}}>{[l.company,l.city].filter(Boolean).join(" · ")}</div>
+                  {l.value&&<div style={{fontSize:13,color:"#10b981",fontWeight:700}}>{fmtValor(l.value)}</div>}
                 </div>
-                <button className="btn" onClick={e=>{e.stopPropagation();aprovarProposta(l.id);}} style={{background:"linear-gradient(135deg,#10b981,#059669)",color:"#fff",borderRadius:10,padding:"8px 14px",fontWeight:700,fontSize:12,flexShrink:0}}>✅ Aprovar</button>
+                <button className="btn" onClick={async e=>{e.stopPropagation();await sb.from("leads").update({status:"contract",proposal:true}).eq("id",l.id);aviso("Proposta aprovada! ✅");carregarLeads(pagina,filtroStatus,busca);}} style={{background:"linear-gradient(135deg,#10b981,#059669)",color:"#fff",borderRadius:10,padding:"8px 14px",fontWeight:700,fontSize:12}}>✅ Aprovar</button>
               </div>
             ))}
           </div>
         )}
 
-        {/* ══ ADMIN ══ */}
-        {aba==="admin"&&isAdmin&&(
-          <div className="fade">
-            <div style={{fontWeight:800,fontSize:18,marginBottom:16}}>👑 Visão Admin</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
-              {STATUS_KEYS.map(k=>(
-                <div key={k} className="stat card">
-                  <div style={{fontSize:28,fontWeight:800,color:STATUS_MAP[k].cor}}>{stats[k]||0}</div>
-                  <div style={{fontSize:11,color:"#3d5270",fontWeight:600,marginTop:4}}>{STATUS_MAP[k].label}</div>
-                  <div style={{position:"absolute",right:-8,top:-8,width:60,height:60,borderRadius:"50%",background:`${STATUS_MAP[k].cor}15`}}/>
-                </div>
-              ))}
-              <div className="stat card" style={{gridColumn:"1/-1",background:"linear-gradient(135deg,#0f2a1a,#0a1f12)"}}>
-                <div style={{fontSize:28,fontWeight:800,color:"#10b981"}}>{totalBanco}</div>
-                <div style={{fontSize:11,color:"#3d5270",fontWeight:600,marginTop:4}}>Total Geral no Banco</div>
-              </div>
-            </div>
-            <div className="secao">Todos os leads recentes</div>
-            {leads.slice(0,10).map(l=>(
-              <div key={l.id} className="linha card" onClick={()=>abrirVer(l)}>
-                <div className="avatar" style={{background:`${statusInfo(l.status).cor}22`,color:statusInfo(l.status).cor}}>{(l.name||"?")[0].toUpperCase()}</div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontWeight:700,fontSize:14,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{l.name}</div>
-                  <div style={{fontSize:12,color:"#3d5270"}}>{[l.company,l.city].filter(Boolean).join(" · ")}</div>
-                  <div style={{fontSize:11,color:"#f97316",marginTop:1}}>👤 {l.owner||"Sem responsável"}</div>
-                </div>
-                <span className="badge" style={{background:`${statusInfo(l.status).cor}20`,color:statusInfo(l.status).cor}}>{statusInfo(l.status).label}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ══ RELATÓRIO ══ */}
-        {aba==="relatorio"&&(
-          <RelatorioInteligente usuario={usuario} sb={sb} hoje={hoje} STATUS_MAP={STATUS_MAP} fmtValor={fmtValor}/>
-        )}
-        {/* ══ VOZ ══ */}
+        {/* VOZ */}
         {aba==="voice"&&(
           <div className="fade" style={{textAlign:"center"}}>
-            <div style={{marginBottom:8,color:"#3d5270",fontSize:14}}>Fale enquanto dirige:</div>
-            <div className="card" style={{padding:14,marginBottom:24,fontSize:13,color:"#647d9e",lineHeight:1.8,textAlign:"left"}}>
-              <em>"Lead Geladinhos Gourmet, contato João Silva, telefone 64 99999-1234, Rio Verde GO, proposta de 22 mil, sistema de 8 kWp, ligar amanhã"</em>
+            <div style={{marginBottom:8,color:"#6b5a8e",fontSize:14}}>Fale enquanto dirige:</div>
+            <div className="card" style={{padding:14,marginBottom:24,fontSize:13,color:"#a78bfa",lineHeight:1.8,textAlign:"left"}}>
+              <em>"Lead Geladinhos Gourmet, contato João Silva, telefone 64 99999-1234, Rio Verde GO, proposta de 22 mil, sistema de 8 kWp"</em>
             </div>
-            <button className={`btn${ouvindo?" pulse":""}`} onClick={ouvindo?pararVoz:iniciarVoz} style={{width:110,height:110,borderRadius:"50%",background:ouvindo?"rgba(249,115,22,.15)":"rgba(249,115,22,.08)",border:`3px solid ${ouvindo?"#f97316":"#1a2840"}`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>
-              <svg width="36" height="36" viewBox="0 0 24 24" fill={ouvindo?"#f97316":"none"} stroke={ouvindo?"#f97316":"#3d5270"} strokeWidth="2">
+            <button className={`btn${ouvindo?" pulse":""}`} onClick={ouvindo?pararVoz:iniciarVoz}
+              style={{width:110,height:110,borderRadius:"50%",background:ouvindo?"rgba(124,58,237,.2)":"rgba(124,58,237,.1)",border:`3px solid ${ouvindo?"#7c3aed":"#2d1b69"}`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill={ouvindo?"#7c3aed":"none"} stroke={ouvindo?"#7c3aed":"#6b5a8e"} strokeWidth="2">
                 <rect x="9" y="2" width="6" height="11" rx="3"/>
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
                 <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
               </svg>
             </button>
-            <div style={{fontSize:13,color:ouvindo?"#f97316":"#3d5270",fontWeight:600,marginBottom:24}}>{ouvindo?"🔴 Ouvindo... toque para parar":"Toque para falar"}</div>
-            {voiceTexto&&(<div className="card" style={{padding:16,marginBottom:16,textAlign:"left"}}><div className="lbl">Você disse:</div><div style={{fontSize:14,color:"#647d9e",fontStyle:"italic",marginTop:4}}>"{voiceTexto}"</div></div>)}
-            {voiceLoad&&<div style={{color:"#f97316",fontSize:14,marginBottom:16}}>⏳ Interpretando com IA...</div>}
+            <div style={{fontSize:13,color:ouvindo?"#a78bfa":"#6b5a8e",fontWeight:600,marginBottom:24}}>{ouvindo?"🔴 Ouvindo... toque para parar":"Toque para falar"}</div>
+            {voiceTexto&&(<div className="card" style={{padding:16,marginBottom:16,textAlign:"left"}}><div className="lbl">Você disse:</div><div style={{fontSize:14,color:"#a78bfa",fontStyle:"italic",marginTop:4}}>"{voiceTexto}"</div></div>)}
+            {voiceLoad&&<div style={{color:"#7c3aed",fontSize:14,marginBottom:16}}>⏳ Interpretando com IA...</div>}
             {voiceParsed&&(
               <div className="card fade" style={{padding:20,textAlign:"left"}}>
                 <div style={{fontSize:11,color:"#10b981",fontWeight:700,marginBottom:12,textTransform:"uppercase"}}>✅ Lead identificado</div>
                 <div style={{display:"grid",gap:6,marginBottom:16}}>
-                  {[["Nome",voiceParsed.name],["Empresa",voiceParsed.company],["Telefone",voiceParsed.phone1],["Cidade",voiceParsed.city],["Estado",voiceParsed.state],["Status",statusInfo(voiceParsed.status).label],["Valor",fmtValor(voiceParsed.value)],["kWp",voiceParsed.kwp],["Observação",voiceParsed.history]].map(([k,v])=>v?(
-                    <div key={k} style={{display:"flex",gap:8}}><span style={{fontSize:12,color:"#3d5270",minWidth:90}}>{k}:</span><span style={{fontSize:13,color:"#e8eaf6",fontWeight:600}}>{v}</span></div>
+                  {[["Nome",voiceParsed.name],["Telefone",voiceParsed.phone1],["Cidade",voiceParsed.city],["Status",statusInfo(voiceParsed.status).label],["Valor",fmtValor(voiceParsed.value)],["kWp",voiceParsed.kwp],["Obs",voiceParsed.history]].map(([k,v])=>v?(
+                    <div key={k} style={{display:"flex",gap:8}}><span style={{fontSize:12,color:"#6b5a8e",minWidth:70}}>{k}:</span><span style={{fontSize:13,color:"#e8eaf6",fontWeight:600}}>{v}</span></div>
                   ):null)}
                 </div>
                 <div style={{display:"flex",gap:8}}>
-                  <button className="btn" onClick={confirmarVoz} style={{flex:1,background:"linear-gradient(135deg,#10b981,#059669)",color:"#fff",borderRadius:10,padding:"10px 0",fontWeight:700,fontSize:14}}>✅ Salvar</button>
-                  <button className="btn" onClick={()=>{setForm(voiceParsed);setModal("add");setVoiceParsed(null);}} style={{flex:1,background:"#1a2840",color:"#647d9e",borderRadius:10,padding:"10px 0",fontWeight:600,fontSize:14}}>✏️ Editar</button>
+                  <button className="btn" onClick={confirmarVoz} style={{flex:1,background:"linear-gradient(135deg,#7c3aed,#6d28d9)",color:"#fbbf24",borderRadius:10,padding:"10px 0",fontWeight:700,fontSize:14}}>✅ Salvar</button>
+                  <button className="btn" onClick={()=>{setForm(voiceParsed);setModal("add");setVoiceParsed(null);}} style={{flex:1,background:"#1a0f38",color:"#a78bfa",borderRadius:10,padding:"10px 0",fontWeight:600,fontSize:14}}>✏️ Editar</button>
                 </div>
               </div>
             )}
@@ -868,44 +681,38 @@ function AppPrincipal({ usuario, onLogout }){
         )}
       </div>
 
-      {/* MODAL VER */}
-      {modal==="view"&&sel&&(
+      {/* MODAL BUSCA ANTI-DUPLICATA */}
+      {modal==="busca"&&(
         <div className="overlay" onClick={fecharModal}>
           <div className="modal fade" onClick={e=>e.stopPropagation()}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
-              <div style={{display:"flex",alignItems:"center",gap:12}}>
-                <div className="avatar" style={{width:50,height:50,fontSize:19,background:`${statusInfo(sel.status).cor}22`,color:statusInfo(sel.status).cor}}>{(sel.name||"?")[0].toUpperCase()}</div>
-                <div>
-                  <div style={{fontWeight:800,fontSize:17,lineHeight:1.2}}>{sel.name}</div>
-                  {sel.company&&<div style={{fontSize:13,color:"#647d9e",marginTop:2}}>{sel.company}</div>}
-                  <span className="badge" style={{background:`${statusInfo(sel.status).cor}20`,color:statusInfo(sel.status).cor,marginTop:4,display:"inline-block"}}>{statusInfo(sel.status).label}</span>
-                </div>
-              </div>
-              <button className="btn" onClick={fecharModal} style={{color:"#3d5270",background:"none",fontSize:22,lineHeight:1,flexShrink:0}}>✕</button>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <div style={{fontWeight:800,fontSize:18}}>Novo Lead</div>
+              <button className="btn" onClick={fecharModal} style={{color:"#6b5a8e",background:"none",fontSize:22}}>✕</button>
             </div>
-            <div style={{display:"grid",gap:10,marginBottom:14}}>
-              {[[sel.phone1,"📞","Telefone principal"],[sel.phone2,"📱","Telefone secundário"],[sel.email,"✉️","Email"],[(sel.city||sel.state)?[sel.city,sel.state].filter(Boolean).join(" - "):null,"📍","Localização"],[sel.value?fmtValor(sel.value)+(sel.kwp?` · ${sel.kwp} kWp`:""):null,"💰","Valor"],[sel.probability,"🎯","Probabilidade"],[sel.owner,"👤","Responsável"],[sel.concessionaria,"⚡","Concessionária"]].filter(([v])=>v).map(([val,ic,lbl],i)=>(
-                <div key={i} style={{display:"flex",gap:10,alignItems:"center"}}>
-                  <span style={{fontSize:16}}>{ic}</span>
-                  <div><div style={{fontSize:11,color:"#3d5270"}}>{lbl}</div><div style={{fontSize:14,fontWeight:600}}>{val}</div></div>
-                </div>
-              ))}
+            <div style={{fontSize:13,color:"#6b5a8e",marginBottom:12}}>Digite o nome ou telefone para verificar se já existe:</div>
+            <div style={{position:"relative"}}>
+              <input className="campo" placeholder="Nome ou telefone..." value={buscaNovo}
+                onChange={e=>{setBuscaNovo(e.target.value);buscarDuplicata(e.target.value);}}
+                autoFocus/>
+              {buscando&&<div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",color:"#7c3aed"}}><span className="spin">⏳</span></div>}
             </div>
-            {sel.history&&<div style={{background:"#060c1a",borderRadius:10,padding:12,marginBottom:12,fontSize:13,color:"#647d9e",lineHeight:1.6}}>📝 {sel.history}</div>}
-            <div style={{fontSize:11,color:"#3d5270",marginBottom:12}}>📞 {sel.visit_or_call||0} contatos registrados</div>
-            {isFinanceiro&&sel.status==="proposal"&&(
-              <button className="btn" onClick={()=>aprovarProposta(sel.id)} style={{width:"100%",background:"linear-gradient(135deg,#10b981,#059669)",color:"#fff",borderRadius:10,padding:12,fontWeight:700,fontSize:15,marginBottom:8}}>✅ Aprovar Proposta</button>
-            )}
-            <div style={{display:"flex",gap:8}}>
-              <button className="btn" onClick={()=>abrirWhatsApp(sel)} style={{flex:1,background:"linear-gradient(135deg,#25d366,#128c7e)",color:"#fff",borderRadius:10,padding:11,fontWeight:700,fontSize:14}}>💬 WhatsApp</button>
-              <button className="btn" onClick={()=>registrarContato(sel.id)} style={{flex:1,background:"rgba(249,115,22,.12)",color:"#f97316",border:"1px solid rgba(249,115,22,.25)",borderRadius:10,padding:11,fontWeight:700,fontSize:13}}>📞 Contato ({sel.visit_or_call||0})</button>
-            </div>
-            {!isFinanceiro&&(
-              <div style={{display:"flex",gap:8,marginTop:8}}>
-                <button className="btn" onClick={()=>abrirEditar(sel)} style={{flex:1,background:"#1a2840",color:"#647d9e",borderRadius:10,padding:10,fontWeight:600,fontSize:13}}>✏️ Editar</button>
-                {isAdmin&&<button className="btn" onClick={()=>excluirLead(sel.id)} style={{background:"rgba(239,68,68,.1)",color:"#ef4444",borderRadius:10,padding:"10px 14px",fontWeight:700,fontSize:13}}>🗑️</button>}
+            {resultadosBusca.length>0&&(
+              <div className="busca-resultado">
+                <div style={{padding:"8px 14px",fontSize:11,color:"#fbbf24",fontWeight:700,background:"rgba(251,191,36,.08)"}}>⚠️ Clientes encontrados — selecione para atualizar:</div>
+                {resultadosBusca.map(l=>(
+                  <div key={l.id} className="busca-item" onClick={()=>selecionarExistente(l)}>
+                    <div style={{fontWeight:700}}>{l.name}</div>
+                    <div style={{fontSize:11,color:"#6b5a8e"}}>{[l.phone1,l.city].filter(Boolean).join(" · ")} · <span style={{color:statusInfo(l.status).cor}}>{statusInfo(l.status).label}</span></div>
+                  </div>
+                ))}
               </div>
             )}
+            <div style={{display:"flex",gap:8,marginTop:16}}>
+              <button className="btn" onClick={confirmarNovo} style={{flex:1,background:"linear-gradient(135deg,#7c3aed,#6d28d9)",color:"#fbbf24",borderRadius:10,padding:12,fontWeight:700,fontSize:14}}>
+                ➕ Criar Novo Lead
+              </button>
+              <button className="btn" onClick={fecharModal} style={{background:"#1a0f38",color:"#a78bfa",borderRadius:10,padding:"12px 16px",fontWeight:600}}>Cancelar</button>
+            </div>
           </div>
         </div>
       )}
@@ -916,67 +723,107 @@ function AppPrincipal({ usuario, onLogout }){
           <div className="modal fade" onClick={e=>e.stopPropagation()}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
               <div style={{fontWeight:800,fontSize:18}}>{modal==="add"?"Novo Lead":"Editar Lead"}</div>
-              <button className="btn" onClick={fecharModal} style={{color:"#3d5270",background:"none",fontSize:22,lineHeight:1}}>✕</button>
+              <button className="btn" onClick={fecharModal} style={{color:"#6b5a8e",background:"none",fontSize:22}}>✕</button>
             </div>
             <div style={{display:"grid",gap:10}}>
-
-              {/* NOME */}
               <input className="campo" placeholder="NOME / RAZÃO SOCIAL *" value={form.name||""} onChange={e=>setForm(f=>({...f,name:e.target.value}))}/>
-
-              {/* EMPRESA */}
-              <input className="campo" placeholder="RESIDENCIAL / EMPRESA" value={form.company||""} onChange={e=>setForm(f=>({...f,company:e.target.value}))}/>
-
-              {/* TELEFONE */}
+              <select className="campo" value={form.type||"Residencial"} onChange={e=>setForm(f=>({...f,type:e.target.value}))}>
+                {TIPOS.map(t=><option key={t}>{t}</option>)}
+              </select>
+              <input className="campo" placeholder="EMPRESA / COMÉRCIO" value={form.company||""} onChange={e=>setForm(f=>({...f,company:e.target.value}))}/>
               <input className="campo" placeholder="TELEFONE" value={form.phone1||""} onChange={e=>setForm(f=>({...f,phone1:e.target.value}))}/>
-
-              {/* CIDADE + UF na mesma linha */}
               <div style={{display:"grid",gridTemplateColumns:"1fr 64px",gap:8}}>
                 <input className="campo" placeholder="CIDADE" value={form.city||""} onChange={e=>setForm(f=>({...f,city:e.target.value}))}/>
                 <input className="campo" placeholder="UF" value={form.state||"GO"} onChange={e=>setForm(f=>({...f,state:e.target.value}))}/>
               </div>
-
-              {/* STATUS */}
               <select className="campo" value={form.status||"sondar"} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>
                 {STATUS_KEYS.map(k=><option key={k} value={k}>{STATUS_MAP[k].label}</option>)}
               </select>
-
-              {/* HISTÓRICO */}
+              <input className="campo" placeholder="REFERÊNCIA (ponto de referência)" value={form.pg||""} onChange={e=>setForm(f=>({...f,pg:e.target.value}))}/>
+              <input className="campo" placeholder="INDICAÇÃO (quem indicou)" value={form.titular||""} onChange={e=>setForm(f=>({...f,titular:e.target.value}))}/>
               <textarea className="campo" rows={2} placeholder="HISTÓRICO / OBSERVAÇÃO" value={form.history||""} onChange={e=>setForm(f=>({...f,history:e.target.value}))} style={{resize:"none"}}/>
-
-              {/* BOTÃO + CAMPOS AVANÇADOS */}
               <CamposAvancados form={form} setForm={setForm}/>
-
             </div>
             <div style={{display:"flex",gap:8,marginTop:18}}>
-              <button className="btn" onClick={salvarLead} style={{flex:1,background:"linear-gradient(135deg,#f97316,#fb923c)",color:"#fff",borderRadius:10,padding:13,fontWeight:700,fontSize:15,boxShadow:"0 4px 14px rgba(249,115,22,.3)"}}>
+              <button className="btn" onClick={salvarLead} style={{flex:1,background:"linear-gradient(135deg,#7c3aed,#6d28d9)",color:"#fbbf24",borderRadius:10,padding:13,fontWeight:700,fontSize:15,boxShadow:"0 4px 14px rgba(124,58,237,.3)"}}>
                 {modal==="add"?"➕ Adicionar":"💾 Salvar"}
               </button>
-              <button className="btn" onClick={fecharModal} style={{background:"#1a2840",color:"#647d9e",borderRadius:10,padding:"13px 16px",fontWeight:600}}>Cancelar</button>
+              <button className="btn" onClick={fecharModal} style={{background:"#1a0f38",color:"#a78bfa",borderRadius:10,padding:"13px 16px",fontWeight:600}}>Cancelar</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* MODAL VER */}
+      {modal==="view"&&sel&&(
+        <div className="overlay" onClick={fecharModal}>
+          <div className="modal fade" onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <div className="avatar" style={{width:50,height:50,fontSize:19,background:`${statusInfo(sel.status).cor}22`,color:statusInfo(sel.status).cor}}>{(sel.name||"?")[0].toUpperCase()}</div>
+                <div>
+                  <div style={{fontWeight:800,fontSize:17}}>{sel.name}</div>
+                  {sel.company&&<div style={{fontSize:13,color:"#a78bfa",marginTop:2}}>{sel.company}</div>}
+                  <span className="badge" style={{background:`${statusInfo(sel.status).cor}20`,color:statusInfo(sel.status).cor,marginTop:4,display:"inline-block"}}>{statusInfo(sel.status).label}</span>
+                </div>
+              </div>
+              <button className="btn" onClick={fecharModal} style={{color:"#6b5a8e",background:"none",fontSize:22,flexShrink:0}}>✕</button>
+            </div>
+            <div style={{display:"grid",gap:10,marginBottom:14}}>
+              {[[sel.type,"🏷️","Tipo"],[sel.phone1,"📞","Telefone"],[sel.phone2,"📱","Tel. Secundário"],[sel.email,"✉️","Email"],[(sel.city||sel.state)?[sel.city,sel.state].filter(Boolean).join(" - "):null,"📍","Localização"],[sel.value?fmtValor(sel.value)+(sel.kwp?` · ${sel.kwp} kWp`:""):null,"💰","Valor"],[sel.probability,"🎯","Probabilidade"],[sel.owner,"👤","Responsável"],[sel.pg,"📌","Referência"],[sel.titular,"🤝","Indicação"],[sel.concessionaria,"⚡","Concessionária"]].filter(([v])=>v).map(([val,ic,lbl],i)=>(
+                <div key={i} style={{display:"flex",gap:10,alignItems:"center"}}>
+                  <span style={{fontSize:16}}>{ic}</span>
+                  <div><div style={{fontSize:11,color:"#6b5a8e"}}>{lbl}</div><div style={{fontSize:14,fontWeight:600}}>{val}</div></div>
+                </div>
+              ))}
+            </div>
+            {sel.history&&<div style={{background:"#080412",borderRadius:10,padding:12,marginBottom:12,fontSize:13,color:"#a78bfa",lineHeight:1.6}}>📝 {sel.history}</div>}
+            <div style={{fontSize:11,color:"#6b5a8e",marginBottom:12}}>📞 {sel.visit_or_call||0} contatos registrados</div>
+            <div style={{display:"flex",gap:8}}>
+              <button className="btn" onClick={()=>abrirWhatsApp(sel)} style={{flex:1,background:"linear-gradient(135deg,#25d366,#128c7e)",color:"#fff",borderRadius:10,padding:11,fontWeight:700,fontSize:14}}>💬 WhatsApp</button>
+              <button className="btn" onClick={()=>registrarContato(sel.id)} style={{flex:1,background:"rgba(124,58,237,.15)",color:"#a78bfa",border:"1px solid rgba(124,58,237,.3)",borderRadius:10,padding:11,fontWeight:700,fontSize:13}}>📞 Contato ({sel.visit_or_call||0})</button>
+            </div>
+            <div style={{display:"flex",gap:8,marginTop:8}}>
+              <button className="btn" onClick={()=>abrirEditar(sel)} style={{flex:1,background:"#1a0f38",color:"#a78bfa",borderRadius:10,padding:10,fontWeight:600,fontSize:13}}>✏️ Editar</button>
+              {isAdmin&&<button className="btn" onClick={()=>excluirLead(sel.id)} style={{background:"rgba(239,68,68,.1)",color:"#ef4444",borderRadius:10,padding:"10px 14px",fontWeight:700,fontSize:13}}>🗑️</button>}
+            </div>
+          </div>
+        </div>
+      )}
+
       {toast&&<div className="toast" style={{background:toast.tipo==="erro"?"#4a0f0f":"#0d3320",color:toast.tipo==="erro"?"#fca5a5":"#6ee7b7"}}>{toast.msg}</div>}
     </div>
   );
 }
 
-/* ════════════════════════════════
-   ROOT
-════════════════════════════════ */
+/* ════ ROOT ════ */
 function Root(){
-  const [usuario, setUsuario] = useState(()=>{
-    try{ const u=localStorage.getItem("inn_user"); return u?JSON.parse(u):null; }catch{ return null; }
+  const [usuario,setUsuario]=useState(()=>{
+    try{
+      const u=localStorage.getItem("inn_user");
+      if(!u)return null;
+      const parsed=JSON.parse(u);
+      // Verificar se expirou (30 dias)
+      if(parsed.expiry&&Date.now()>parsed.expiry){
+        localStorage.removeItem("inn_user");
+        return null;
+      }
+      return parsed;
+    }catch{return null;}
   });
 
-  function onLogin(u){ setUsuario(u); }
-  function onLogout(){ localStorage.removeItem("inn_user"); setUsuario(null); }
+  function onLogin(u){
+    const expiry=Date.now()+(30*24*60*60*1000);
+    localStorage.setItem("inn_user",JSON.stringify({...u,expiry}));
+    setUsuario(u);
+  }
+  function onLogout(){localStorage.removeItem("inn_user");setUsuario(null);}
 
-  if(!usuario) return <TelaLogin onLogin={onLogin}/>;
-  return <AppPrincipal usuario={usuario} onLogout={onLogout}/>;
+  if(!usuario)return<TelaLogin onLogin={onLogin}/>;
+  return<AppPrincipal usuario={usuario} onLogout={onLogout}/>;
 }
 
-ReactDOM.render(<Root/>, document.getElementById("root"));
+ReactDOM.render(<Root/>,document.getElementById("root"));
 </script>
 </body>
 </html>
