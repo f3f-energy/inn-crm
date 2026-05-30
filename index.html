@@ -46,7 +46,7 @@ const FORM_VAZIO = {
   history:"", probability:"", owner:"", visit_or_call:"0",
   budget:false, proposal:false, delivered:false, closed:false,
   post_sales:false, concessionaria:"Equatorial", prospectando:true,
-  referencia:"", indicacao:""
+  referencia:"", indicacao:"", hot:false
 };
 
 const PRECO = { Residencial:3500, Empresarial:3200, Outro:3500 };
@@ -100,15 +100,15 @@ function CamposAvancados({ form, setForm }){
 
   function handleValor(v){
     setForm(f=>{
-      const val = parseFloat(v.replace(/\D/g,""));
-      const kwp = val ? (val/preco).toFixed(2) : "";
+      const val = parseFloat(v.replace(/[^\d]/g,""));
+      const kwp = val && preco ? (val/preco).toFixed(2) : "";
       return {...f, value:v, kwp:kwp||f.kwp};
     });
   }
   function handleKwp(v){
     setForm(f=>{
-      const kwp = parseFloat(v);
-      const val = kwp ? Math.round(kwp*preco) : "";
+      const kwp = parseFloat(v.replace(",","."));
+      const val = kwp && preco ? Math.round(kwp*preco) : "";
       return {...f, kwp:v, value:val?String(val):f.value};
     });
   }
@@ -386,7 +386,7 @@ function AppPrincipal({ usuario, onLogout }){
       proposal:!!form.proposal,delivered:!!form.delivered,
       closed:!!form.closed,post_sales:!!form.post_sales,
       concessionaria:form.concessionaria||"Equatorial",
-      type:tipo,
+      type:tipo, hot:!!form.hot,
     };
     let error;
     if(modal==="add"){({error}=await sb.from("leads").insert(payload));if(!error)aviso("Lead adicionado! ✅");}
@@ -602,7 +602,7 @@ function AppPrincipal({ usuario, onLogout }){
               <div key={l.id} className="linha card" onClick={()=>abrirVer(l)}>
                 <div className="avatar" style={{background:`${statusInfo(l.status).cor}22`,color:statusInfo(l.status).cor}}>{(l.name||"?")[0].toUpperCase()}</div>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontWeight:700,fontSize:14,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{l.name}</div>
+                  <div style={{fontWeight:700,fontSize:14,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{l.hot?"🔥 ":""}{l.name}</div>
                   <div style={{fontSize:12,color:"#6b5a8e"}}>{[l.type,l.company,l.city].filter(Boolean).join(" · ")}</div>
                   {l.value&&<div style={{fontSize:11,color:"#10b981",fontWeight:700,marginTop:2}}>{fmtValor(l.value)}{l.kwp?` · ${l.kwp} kWp`:""}</div>}
                   {isAdmin&&l.owner&&<div style={{fontSize:11,color:"#6b5a8e",marginTop:1}}>👤 {l.owner}</div>}
@@ -741,6 +741,12 @@ function AppPrincipal({ usuario, onLogout }){
               </select>
               <input className="campo" placeholder="REFERÊNCIA (ponto de referência)" value={form.pg||""} onChange={e=>setForm(f=>({...f,pg:e.target.value}))}/>
               <input className="campo" placeholder="INDICAÇÃO (quem indicou)" value={form.titular||""} onChange={e=>setForm(f=>({...f,titular:e.target.value}))}/>
+              {/* HOT CHECKBOX */}
+              <label style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:form.hot?"rgba(251,191,36,.1)":"#080412",border:`1.5px solid ${form.hot?"#fbbf24":"#2d1b69"}`,borderRadius:10,cursor:"pointer",transition:"all .2s"}}>
+                <input type="checkbox" checked={!!form.hot} onChange={e=>setForm(f=>({...f,hot:e.target.checked}))} style={{width:20,height:20,accentColor:"#fbbf24",cursor:"pointer"}}/>
+                <span style={{fontWeight:700,fontSize:15,color:form.hot?"#fbbf24":"#6b5a8e"}}>🔥 Lead Quente</span>
+              </label>
+
               <textarea className="campo" rows={2} placeholder="HISTÓRICO / OBSERVAÇÃO" value={form.history||""} onChange={e=>setForm(f=>({...f,history:e.target.value}))} style={{resize:"none"}}/>
               <CamposAvancados form={form} setForm={setForm}/>
             </div>
